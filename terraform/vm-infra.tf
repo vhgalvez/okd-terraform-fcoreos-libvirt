@@ -8,9 +8,14 @@ resource "libvirt_volume" "infra_disk" {
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
   vars = {
-    hostname = var.infra.hostname
-    ip       = var.infra.ip
-    ssh_keys = jsonencode(var.ssh_keys)
+    hostname       = var.infra.hostname
+    ip             = var.infra.ip
+    gateway        = var.gateway
+    dns1           = var.dns1
+    dns2           = var.dns2
+    cluster_domain = var.cluster_domain
+    ssh_keys       = jsonencode(var.ssh_keys)
+    timezone       = var.timezone
   }
 }
 
