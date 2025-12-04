@@ -1,27 +1,84 @@
-# Ignition configs para OKD
+# Ignition, install-config y flujo de instalación de OKD  
+_repo: `okd-terraform-fcoreos-libvirt`_
 
-Estos archivos **NO** se escriben a mano.
+Este documento explica, **ordenado y corregido**, cómo se conectan:
 
-Se generan con `openshift-install` a partir de `install-config/install-config.yaml`:
-
-```bash
-cd install-config
-openshift-install create ignition-configs --dir=.
-```
-
-Esto generará:
-
-- `bootstrap.ign`
-- `master.ign`
-- `worker.ign`
+- `install-config.yaml`
+- `openshift-install`
+- Ignition (`bootstrap.ign`, `master.ign`, `worker.ign`)
+- Terraform + libvirt + Fedora CoreOS
 
 ---
 
-## 🟦 12. `install-config/install-config.yaml` (plantilla base)
+## 1. Ignition: idea general
 
-👉 **Esto es solo un ejemplo**, ajusta dominios, red, pullSecret, sshKey, etc.
+En este laboratorio:
 
-```yaml
+- Las VMs de **Fedora CoreOS** (bootstrap, master, worker) **NO usan cloud-init**.
+- Se configuran con **Ignition**, que es un JSON que describe:
+  - usuarios y claves
+  - ficheros a escribir
+  - servicios systemd a habilitar
+  - etc.
+
+👉 **Importante:**  
+Los archivos Ignition para OKD **NO se escriben a mano**.
+
+Los genera `openshift-install` a partir de `install-config/install-config.yaml`.
+
+---
+
+## 2. Generar Ignition con `openshift-install`
+
+Asumiendo esta estructura:
+
+```text
+okd-terraform-fcoreos-libvirt/
+├── install-config/
+│   └── install-config.yaml
+└── terraform/
+    └── ...
+Ejecuta:
+
+bash
+Copiar código
+cd install-config
+
+# (opcional) ver/validar manifests
+openshift-install create manifests --dir=.
+
+# generar Ignition
+openshift-install create ignition-configs --dir=.
+Esto creará dentro de install-config/:
+
+bootstrap.ign
+
+master.ign
+
+worker.ign
+
+Opcionalmente puedes copiarlos a una carpeta ignition/:
+
+bash
+Copiar código
+mkdir -p ../ignition
+cp bootstrap.ign master.ign worker.ign ../ignition/
+Terraform luego inyectará esos .ign en las VMs de Fedora CoreOS.
+
+3. install-config/install-config.yaml (plantilla base corregida)
+Este es un ejemplo adaptado a tu laboratorio.
+Debes ajustar:
+
+dominio (baseDomain)
+
+red (machineNetwork)
+
+pullSecret
+
+sshKey
+
+yaml
+Copiar código
 apiVersion: v1
 baseDomain: cefaslocalserver.com
 metadata:
@@ -35,9 +92,14 @@ networking:
   serviceNetwork:
     - 172.30.0.0/16
 
+# Red física/virtual donde viven tus nodos (libvirt)
+machineNetwork:
+  - cidr: 10.17.3.0/24
+
 platform:
   none: {}
 
+# Laboratorio con 1 master (oficialmente son 3, pero para lab vale)
 controlPlane:
   hyperthreading: Enabled
   name: master
@@ -48,25 +110,90 @@ compute:
     name: worker
     replicas: 1
 
-pullSecret: "<TU_PULL_SECRET_JSON>"
-sshKey: "ssh-rsa AAAA... tu clave ... vhgalvez@gmail.com"
-```
+# Para OKD (comunidad), se puede usar "{}"
+# Si estás usando OpenShift de Red Hat: sustituir por tu pullSecret real
+pullSecret: "{}"
 
-Luego:
+# Sustituir por tu clave real
+sshKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDC9X... vhgalvez@gmail.com"
+Notas importantes sobre este archivo
+platform: none
+Obligatorio cuando NO usas AWS, Azure, GCP, vSphere, etc. (bare metal/libvirt/homelab).
 
-```bash
+replicas: 1
+
+Documentación oficial recomienda 3 masters.
+
+Para laboratorio con pocos recursos, usar 1 funciona bien.
+
+machineNetwork.cidr
+Debe coincidir con la red de tus VMs en libvirt.
+En tu caso: 10.17.3.0/24.
+
+pullSecret
+
+OKD (comunidad): pullSecret: "{}" es válido.
+
+OpenShift (Red Hat): usa una pull secret real.
+
+Después de crear este archivo, siempre:
+
+bash
+Copiar código
 cd install-config
+openshift-install create manifests --dir=.
 openshift-install create ignition-configs --dir=.
-# Copia los .ign a ../ignition si hace falta
-```
+Obtendrás:
 
----
+bootstrap.ign
 
-## 13. butane/ (opcional, si quieres jugar con FCOS fuera de OKD)
+master.ign
 
-Por ejemplo, `butane/bootstrap.bu`:
+worker.ign
 
-```yaml
+4. Cómo usa Terraform estos .ign (visión conceptual)
+Terraform describe la infraestructura en terraform/:
+
+red (network.tf)
+
+pool de volúmenes
+
+VMs:
+
+infra (AlmaLinux + cloud-init)
+
+bootstrap (FCOS + Ignition)
+
+master (FCOS + Ignition)
+
+worker (FCOS + Ignition)
+
+En los ficheros de Terraform (vm-coreos.tf + ignition.tf):
+
+Se leen los archivos .ign generados por openshift-install.
+
+Se crean recursos tipo libvirt_ignition (o equivalente).
+
+Cada libvirt_domain (bootstrap/master/worker) recibe su Ignition.
+
+Resultado:
+
+Cuando arranca la VM FCOS, lee Ignition y sabe:
+
+si es bootstrap, master o worker
+
+a qué cluster unirse
+
+cómo configurar servicios base
+
+5. Butane (opcional): jugar con FCOS fuera de OKD
+Butane convierte .bu → .ign.
+Es útil si quieres probar FCOS sin OKD, pero NO es obligatorio para este lab.
+
+Ejemplo butane/bootstrap.bu:
+
+yaml
+Copiar código
 variant: fcos
 version: 1.5.0
 storage:
@@ -80,11 +207,10 @@ passwd:
     - name: core
       ssh_authorized_keys:
         - ssh-rsa AAAA... tu clave ...
-```
+Makefile simple:
 
-Y un Makefile:
-
-```makefile
+makefile
+Copiar código
 BINARY=butane
 
 all: bootstrap master worker
@@ -97,109 +223,89 @@ master:
 
 worker:
 	$(BINARY) worker.bu > ../ignition/worker.ign
-```
+Para un lab de OKD puro, lo normal es usar los Ignition generados por openshift-install, no Butane manual.
 
-> **Nota:** Para OKD puro, lo normal es usar los `.ign` que genera `openshift-install`, no Butane manual.
+6. Mini README para la raíz del repo
+Puedes usar esto (o adaptarlo) como README.md principal:
 
----
-
-## 14. README principal (`README.md` en la raíz)
-
-Mini-esqueleto:
-
+markdown
+Copiar código
 # okd-terraform-fcoreos-libvirt
 
-Laboratorio de OKD (OpenShift Origin) sobre Fedora CoreOS y libvirt/KVM, orquestado con Terraform. Diseñado para homelab con recursos limitados:
+Laboratorio de OKD (OpenShift Origin) sobre Fedora CoreOS y libvirt/KVM, orquestado con Terraform.  
+Diseñado para homelabs con recursos limitados:
 
-- 1 nodo infra (AlmaLinux: DNS + NTP)
-- 1 nodo bootstrap (FCOS)
-- 1 master (FCOS)
-- 1 worker (FCOS)
+- 1 nodo **infra** (AlmaLinux: DNS + NTP)
+- 1 nodo **bootstrap** (Fedora CoreOS)
+- 1 nodo **master** (Fedora CoreOS)
+- 1 nodo **worker** (Fedora CoreOS)
 
 ## Flujo resumido
 
 1. Preparar imágenes:
-
-   - Fedora CoreOS qcow2
-   - AlmaLinux GenericCloud qcow2
+   - Fedora CoreOS qcow2 (`fedora-coreos-*.qcow2`)
+   - AlmaLinux GenericCloud qcow2 (`AlmaLinux-9-GenericCloud-*.qcow2`)
 
 2. Editar `terraform/terraform.tfvars` con:
-
-   - rutas de imágenes
+   - rutas de imágenes (`coreos_image`, `so_image`)
    - IPs / MACs
-   - clave SSH
+   - clave SSH pública
 
-3. Crear `install-config/install-config.yaml` y generar Ignitions:
+3. Crear `install-config/install-config.yaml` y generar Ignition:
 
    ```bash
    cd install-config
+   openshift-install create manifests --dir=.
    openshift-install create ignition-configs --dir=.
-   ```
+Copiar (o referenciar) los .ign:
 
-4. Copiar (o apuntar) los `.ign` a `ignition/`:
+install-config/bootstrap.ign
 
-   - `ignition/bootstrap.ign`
-   - `ignition/master.ign`
-   - `ignition/worker.ign`
+install-config/master.ign
 
-5. Desplegar infraestructura:
+install-config/worker.ign
 
-   ```bash
-   cd terraform
-   terraform init
-   terraform apply
-   ```
+O copiarlos a ignition/ si tu Terraform los espera ahí.
 
-Seguir la instalación de OKD (bootstrap, wait-for install-complete, etc.).
+Desplegar infraestructura con Terraform:
+
+bash
+Copiar código
+cd terraform
+terraform init
+terraform apply
+Seguir la instalación de OKD:
+
+openshift-install wait-for bootstrap-complete
+
+openshift-install wait-for install-complete
+
+acceder a la consola web y al API con el kubeconfig generado.
+
+Ciclo de laboratorio
+Para liberar recursos, destruir todo:
+
+bash
+Copiar código
+cd terraform
+terraform destroy
+Puedes alternar entre:
+
+tu cluster K3s (ligero, uso diario)
+
+este lab de OKD (pesado, uso educativo/puntual)
+
+markdown
+Copiar código
 
 ---
 
-Si quieres, en el siguiente mensaje puedo:
+## 7. Resumen mental rápido
 
-- Ajustar los tamaños de RAM/CPU finamente a tu servidor (para no matar nada).
-- Escribir un `docs/install-steps.md` con todos los comandos desde cero (incluyendo cuándo destruir K3s y cuándo levantar OKD).
-  ::contentReference[oaicite:0]{index=0}
+- `install-config.yaml` → define el cluster.
+- `openshift-install` → genera `.ign`.
+- Terraform + libvirt → crean VMs y les enchufan `.ign`.
+- Las VMs FCOS → se auto-configuran como bootstrap/master/worker.
+- Cuando terminas de jugar → `terraform destroy` y vuelves a K3s.
 
-
-
-🧠 Notas importantes sobre este archivo
-✔ 1. platform: none
-
-Esto es obligatorio cuando NO usas AWS, Azure, GCP, vSphere, etc.
-
-✔ 2. replicas: 1
-
-OKD oficialmente pide 3 masters, pero para laboratorio funciona perfectamente con 1.
-
-✔ 3. machineCIDR: 10.17.3.0/24
-
-Esta es tu red libvirt.
-
-✔ 4. pullSecret
-
-Debes usar una válida:
-
-Si usas OKD (comunidad) → pon una cadena vacía:
-
-pullSecret: "{}"
-
-
-Si usas OpenShift Installer (Red Hat) → debes poner una real.
-
-✔ 5. Después de crear este archivo:
-
-Ejecutas:
-
-openshift-install create manifests --dir=install-config
-openshift-install create ignition-configs --dir=install-config
-
-
-Y tendrás:
-
-bootstrap.ign
-
-master.ign
-
-worker.ign
-
-Terraform los inyecta a cada VM CoreOS.
+```markdown
