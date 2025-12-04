@@ -13,88 +13,101 @@ OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.21.0-o
 OKD_INSTALLER_SHA256="962291fbba69b7d7bedae4573c9210a4d5692607199e46fd6bde5543653c4bd3"
 
 BIN_DIR="/opt/bin"
+TMP_CLIENT="/tmp/okd-client"
+TMP_INSTALL="/tmp/okd-installer"
 
-# Crear directorio
-if [[ ! -d "$BIN_DIR" ]]; then
-    echo "[+] Creando ${BIN_DIR}"
-    sudo mkdir -p "$BIN_DIR"
-fi
+# --- PREPARAR DIRECTORIOS ---
+
+echo "[+] Creando directorio de binarios: ${BIN_DIR}"
+sudo mkdir -p "$BIN_DIR"
+
+echo "[+] Limpiando y creando directorios temporales..."
+sudo rm -rf "$TMP_CLIENT" "$TMP_INSTALL"
+mkdir -p "$TMP_CLIENT" "$TMP_INSTALL"
+
+# --- INSTALAR CLIENTE (oc + kubectl) ---
 
 echo
 echo "==============================================="
 echo "  Instalando OpenShift Client (oc + kubectl)"
 echo "==============================================="
 
-cd /tmp
-rm -f openshift-client-linux.tar.gz oc kubectl
+cd "$TMP_CLIENT"
 
 echo "[+] Descargando cliente OKD..."
 wget -q "$OKD_CLIENT_URL" -O openshift-client-linux.tar.gz
 
-echo "[+] Verificando SHA256..."
-SHA_ACTUAL=$(sha256sum openshift-client-linux.tar.gz | awk '{print $1}')
+echo "[+] Verificando SHA256 del cliente..."
+SHA_ACTUAL_CLIENT=$(sha256sum openshift-client-linux.tar.gz | awk '{print $1}')
 echo "  - Esperado: $OKD_CLIENT_SHA256"
-echo "  - Actual:   $SHA_ACTUAL"
+echo "  - Actual:   $SHA_ACTUAL_CLIENT"
 
-if [[ "$SHA_ACTUAL" != "$OKD_CLIENT_SHA256" ]]; then
-    echo "❌ ERROR: Hash SHA256 NO coincide"
+if [[ "$SHA_ACTUAL_CLIENT" != "$OKD_CLIENT_SHA256" ]]; then
+    echo "❌ ERROR: Hash SHA256 del cliente NO coincide"
     exit 1
 fi
-echo "✔ Hash verificado correctamente."
+echo "✔ Hash del cliente verificado correctamente."
 
-echo "[+] Extrayendo oc y kubectl..."
-tar -xzf openshift-client-linux.tar.gz --overwrite
+echo "[+] Extrayendo SOLO oc y kubectl..."
+tar -xzf openshift-client-linux.tar.gz oc kubectl
 
-echo "[+] Instalando en ${BIN_DIR}"
-sudo mv oc kubectl "$BIN_DIR/"
+echo "[+] Instalando oc y kubectl en ${BIN_DIR}"
+sudo mv -f oc kubectl "$BIN_DIR/"
 sudo chmod +x "$BIN_DIR/oc" "$BIN_DIR/kubectl"
 
 echo "[+] Cliente instalado:"
-"$BIN_DIR/oc" version --client
+"$BIN_DIR/oc" version --client || true
 
-# Añadir PATH si falta
-if ! echo "$PATH" | grep -q "$BIN_DIR"; then
-    echo "export PATH=\$PATH:$BIN_DIR" >> ~/.bashrc
-    export PATH=$PATH:$BIN_DIR
+# Asegurar que /opt/bin esté al principio del PATH
+if ! grep -q "export PATH=/opt/bin:\$PATH" "$HOME/.bashrc"; then
+    echo "[+] Añadiendo /opt/bin al PATH en ~/.bashrc (al inicio)"
+    echo 'export PATH=/opt/bin:$PATH' >> "$HOME/.bashrc"
 fi
+export PATH=/opt/bin:$PATH
+
+echo "[+] Ruta actual de oc:"
+command -v oc || true
+
+# --- INSTALAR INSTALLER ---
 
 echo
 echo "==============================================="
 echo "  Instalando OKD Installer"
 echo "==============================================="
 
-rm -f openshift-install-linux.tar.gz openshift-install
+cd "$TMP_INSTALL"
 
 echo "[+] Descargando instalador..."
 wget -q "$OKD_INSTALLER_URL" -O openshift-install-linux.tar.gz
 
 echo "[+] Verificando SHA256 del instalador..."
-SHA_ACTUAL=$(sha256sum openshift-install-linux.tar.gz | awk '{print $1}')
+SHA_ACTUAL_INSTALL=$(sha256sum openshift-install-linux.tar.gz | awk '{print $1}')
 echo "  - Esperado: $OKD_INSTALLER_SHA256"
-echo "  - Actual:   $SHA_ACTUAL"
+echo "  - Actual:   $SHA_ACTUAL_INSTALL"
 
-if [[ "$SHA_ACTUAL" != "$OKD_INSTALLER_SHA256" ]]; then
-    echo "❌ ERROR: Hash SHA256 NO coincide"
+if [[ "$SHA_ACTUAL_INSTALL" != "$OKD_INSTALLER_SHA256" ]]; then
+    echo "❌ ERROR: Hash SHA256 del instalador NO coincide"
     exit 1
 fi
-echo "✔ Hash verificado correctamente."
+echo "✔ Hash del instalador verificado correctamente."
 
-echo "[+] Extrayendo openshift-install..."
-tar -xzf openshift-install-linux.tar.gz --overwrite
+echo "[+] Extrayendo SOLO openshift-install..."
+tar -xzf openshift-install-linux.tar.gz openshift-install
 
-echo "[+] Moviendo a ${BIN_DIR}"
-sudo mv openshift-install "$BIN_DIR/"
+echo "[+] Instalando openshift-install en ${BIN_DIR}"
+sudo mv -f openshift-install "$BIN_DIR/"
 sudo chmod +x "$BIN_DIR/openshift-install"
 
-"$BIN_DIR/openshift-install" version
+echo "[+] Versión del instalador:"
+"$BIN_DIR/openshift-install" version || true
 
 echo
 echo "==============================================="
 echo "  Instalación completada!"
-echo "  - oc en: /opt/bin/oc"
-echo "  - kubectl en: /opt/bin/kubectl"
-echo "  - openshift-install en: /opt/bin/openshift-install"
+echo "  - oc              → /opt/bin/oc"
+echo "  - kubectl         → /opt/bin/kubectl"
+echo "  - openshift-install → /opt/bin/openshift-install"
 echo
-echo "Recarga tu terminal:"
+echo "Recarga tu entorno de shell con:"
 echo "   source ~/.bashrc"
 echo "==============================================="
