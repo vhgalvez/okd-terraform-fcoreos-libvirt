@@ -1,3 +1,6 @@
+
+# terraform/ignition.tf
+
 # NOTA IMPORTANTE:
 # Los archivos bootstrap.ign, master.ign y worker.ign
 # deben existir en ../ignition, generados por openshift-install
