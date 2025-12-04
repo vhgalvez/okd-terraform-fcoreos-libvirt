@@ -83,6 +83,8 @@ sudo wget https://github.com/okd-project/okd/releases/download/4.21.0-okd-scos.e
 tar -xvf openshift-install-linux-4.21.0-okd-scos.ec.9.tar.gz
 sudo mv openshift-install /opt/bin/
 sudo chmod +x /opt/bin/openshift-install
+export PATH=$PATH:/opt/bin
+echo "export PATH=\$PATH:/opt/bin" >> ~/.bashrc
 ```
 
 # Cliente (oc + kubectl)
@@ -99,16 +101,13 @@ echo "export PATH=\$PATH:/opt/bin" >> ~/.bashrc
 ```
 
 
-```bash
-export PATH=$PATH:/opt/bin
-echo "export PATH=\$PATH:/opt/bin" >> ~/.bashrc
-```
-
-
 Verificar instalación:
 
 ```bash
 openshift-install version
+oc version
+kubectl version --client
+
 ```
 
 ---
