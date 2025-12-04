@@ -159,3 +159,47 @@ Si quieres, en el siguiente mensaje puedo:
 - Ajustar los tamaños de RAM/CPU finamente a tu servidor (para no matar nada).
 - Escribir un `docs/install-steps.md` con todos los comandos desde cero (incluyendo cuándo destruir K3s y cuándo levantar OKD).
   ::contentReference[oaicite:0]{index=0}
+
+
+
+🧠 Notas importantes sobre este archivo
+✔ 1. platform: none
+
+Esto es obligatorio cuando NO usas AWS, Azure, GCP, vSphere, etc.
+
+✔ 2. replicas: 1
+
+OKD oficialmente pide 3 masters, pero para laboratorio funciona perfectamente con 1.
+
+✔ 3. machineCIDR: 10.17.3.0/24
+
+Esta es tu red libvirt.
+
+✔ 4. pullSecret
+
+Debes usar una válida:
+
+Si usas OKD (comunidad) → pon una cadena vacía:
+
+pullSecret: "{}"
+
+
+Si usas OpenShift Installer (Red Hat) → debes poner una real.
+
+✔ 5. Después de crear este archivo:
+
+Ejecutas:
+
+openshift-install create manifests --dir=install-config
+openshift-install create ignition-configs --dir=install-config
+
+
+Y tendrás:
+
+bootstrap.ign
+
+master.ign
+
+worker.ign
+
+Terraform los inyecta a cada VM CoreOS.

@@ -1,0 +1,38 @@
+apiVersion: v1
+baseDomain: cefaslocalserver.com
+metadata:
+  name: okd-lab
+
+# Redes internas del cluster
+networking:
+  networkType: OVNKubernetes
+  machineCIDR: 10.17.3.0/24
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  serviceNetwork:
+  - 172.30.0.0/16
+
+# Indicar que usamos bare metal / libvirt
+platform:
+  none: {}
+
+# Tamaño del cluster reducido
+controlPlane:
+  name: master
+  replicas: 1
+  platform: {}
+  architecture: amd64
+
+compute:
+- name: worker
+  replicas: 1
+  platform: {}
+  architecture: amd64
+
+# Clave SSH para acceder a los nodos
+sshKey: |
+  ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCdfUJjRAJuFcdO0J8CIOkjaKpqP6h9TqDRhZOJTac0199gFUvAJF9R/MAqwDLi2QI6OtYjz1CiCSVLtVQ2fTTIdwVibr+ZKDcbx/E7ivKUUbcmAOU8NP1gv3e3anoUd5k/0h0krP88CXosr41eTih4EcKhBAKbeZ11M0i9GZOux+/WweLtSQ3NU07sUkf1jDIoBungg77unmadqP3m9PUdkFP7tZ2lufcs3iq+vq8JaUBs/hZKNmWOXpnAyNxD9RlBJmvW2QgHmX53y3WC9bWUEUrwfDMB2wAqWPEDfj+5jsXQZcVE4pqD6T1cPaITnr9KFGnCCG1VQg31t1Jttg8z vhgalvez@gmail.com
+
+# Pull Secret requerido para instalar OKD (Red Hat Developer / OKD)
+pullSecret: '{"auths":{"fake":{"auth": "bar"}}}'

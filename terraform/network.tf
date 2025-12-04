@@ -1,16 +1,21 @@
-resource "libvirt_network" "okd" {
+resource "libvirt_network" "okd_net" {
   name      = var.network_name
   mode      = "nat"
-  domain    = "cefaslocalserver.com"
-  addresses = [var.network_cidr]
+  bridge    = "virbr_okd"
+  domain    = "okd.internal"
+  autostart = true
+  addresses = ["${var.network_cidr}"]
 
   dhcp {
-    enabled = false
-  }
-
-  dns {
     enabled = true
   }
+}
 
-  autostart = true
+resource "libvirt_pool" "okd_pool" {
+  name = "okd_pool"
+  type = "dir"
+
+  target {
+    path = "/var/lib/libvirt/images/okd"
+  }
 }
