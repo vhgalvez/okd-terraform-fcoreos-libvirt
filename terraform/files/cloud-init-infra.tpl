@@ -7,10 +7,12 @@ disable_root: false
 
 users:
   - default
+
   - name: root
     ssh_authorized_keys: ${ssh_keys}
-  - name: infra
-    gecos: "Infra Node"
+
+  - name: core
+    gecos: "Core User"
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     groups: [wheel]
     shell: /bin/bash
@@ -34,7 +36,7 @@ write_files:
 
       [ipv4]
       method=manual
-      addresses1=${ip}/24,${gateway}
+      addresses1=${ip}/24;${gateway};
       dns=${dns1};${dns2};
       dns-search=okd-lab.${cluster_domain}
       may-fail=false
