@@ -78,8 +78,8 @@ Descargar el instalador OKD:
 ```bash
 cd /tmp
 
-wget https://github.com/okd-project/okd/releases/download/4.21.0-okd-scos.ec.11/openshift-install-linux.tar.gz
-tar -xvf openshift-install-linux.tar.gz
+sudo wget https://github.com/okd-project/okd/releases/download/4.21.0-okd-scos.ec.9/openshift-install-linux-4.21.0-okd-scos.ec.9.tar.gz
+tar -xvf openshift-install-linux-4.21.0-okd-scos.ec.9.tar.gz
 sudo mv openshift-install /usr/local/bin/
 sudo chmod +x /usr/local/bin/openshift-install
 ```
