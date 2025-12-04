@@ -1,10 +1,17 @@
-# terraform\vm-infra.tf
+# terraform/vm-infra.tf
+
+# ================================
+#  DISCO DEL NODO INFRA
+# ================================
 resource "libvirt_volume" "infra_disk" {
   name   = "okd-infra.qcow2"
   source = var.almalinux_image
   pool   = libvirt_pool.okd_pool.name
 }
 
+# ================================
+#  CLOUD-INIT DEL NODO INFRA
+# ================================
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
   vars = {
@@ -25,6 +32,9 @@ resource "libvirt_cloudinit_disk" "infra_init" {
   user_data = data.template_file.infra_cloud_init.rendered
 }
 
+# ================================
+#  DEFINICIÓN DE LA VM INFRA
+# ================================
 resource "libvirt_domain" "infra" {
   name   = "okd-infra"
   memory = var.infra.memory

@@ -17,3 +17,16 @@ terraform {
 provider "libvirt" {
   uri = "qemu:///system"
 }
+
+# ================================
+#  POOL DE LIBVIRT PARA OKD
+# ================================
+resource "libvirt_pool" "okd" {
+  name = "okd"
+  type = "dir"
+  path = "/var/lib/libvirt/volumes/okd"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}

@@ -1,4 +1,5 @@
 # terraform/network.tf
+
 resource "libvirt_network" "okd_net" {
   name      = var.network_name
   mode      = "nat"
@@ -13,10 +14,10 @@ resource "libvirt_network" "okd_net" {
 }
 
 resource "libvirt_pool" "okd_pool" {
-  name = "okd_pool"
+  name = "okd"        # nombre correcto del pool
   type = "dir"
 
   target {
-    path = "/var/lib/libvirt/images/okd"
+    path = "/var/lib/libvirt/volumes/okd"
   }
 }
