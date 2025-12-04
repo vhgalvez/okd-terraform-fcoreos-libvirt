@@ -1,3 +1,4 @@
+# terraform/ignition/ignition.tf
 data "local_file" "bootstrap" {
   filename = "${path.module}/../ignition/bootstrap.ign"
 }

@@ -1,3 +1,4 @@
+# terraform\vm-infra.tf
 resource "libvirt_volume" "infra_disk" {
   name   = "okd-infra.qcow2"
   source = var.almalinux_image

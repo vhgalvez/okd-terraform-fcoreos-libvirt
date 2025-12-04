@@ -1,3 +1,4 @@
+# terraform/outputs.tf
 output "infra_ip" {
   value       = var.infra.address
   description = "IP del nodo infra (DNS+NTP)."

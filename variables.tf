@@ -1,3 +1,4 @@
+# terraform/variables.tf
 variable "network_name" { default = "okd-net" }
 variable "network_cidr" { default = "10.17.3.0/24" }
 

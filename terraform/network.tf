@@ -1,3 +1,4 @@
+# terraform/network.tf
 resource "libvirt_network" "okd_net" {
   name      = var.network_name
   mode      = "nat"

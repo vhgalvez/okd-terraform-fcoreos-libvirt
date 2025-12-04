@@ -1,3 +1,4 @@
+# terraform\vm-coreos.tf
 resource "libvirt_volume" "coreos_base" {
   name   = "fcos-base"
   source = var.coreos_image
