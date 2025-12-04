@@ -72,13 +72,26 @@ okd-terraform-fcoreos-libvirt/
 ## 4. Instalación de `openshift-install`
 
 Descargar el instalador OKD:
+# Instalador
+
 
 ```bash
 cd /tmp
-wget https://github.com/okd-project/okd/releases/download/4.16.0-0.okd-2024-09-21-020000/openshift-install-linux-4.16.0-0.okd-2024-09-21-020000.tar.gz
-tar -xvf openshift-install-linux-*.tar.gz
+
+wget https://github.com/okd-project/okd/releases/download/4.21.0-okd-scos.ec.11/openshift-install-linux.tar.gz
+tar -xvf openshift-install-linux.tar.gz
 sudo mv openshift-install /usr/local/bin/
 sudo chmod +x /usr/local/bin/openshift-install
+```
+
+# Cliente (oc + kubectl)
+
+```bash
+wget https://github.com/okd-project/okd/releases/download/4.21.0-okd-scos.ec.11/openshift-client-linux.tar.gz
+tar -xvf openshift-client-linux.tar.gz
+sudo mv oc kubectl /usr/local/bin/
+sudo chmod +x /usr/local/bin/oc /usr/local/bin/kubectl
+
 ```
 
 Verificar instalación:
