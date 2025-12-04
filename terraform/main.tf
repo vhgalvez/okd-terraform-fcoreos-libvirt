@@ -24,7 +24,7 @@ provider "libvirt" {
 resource "libvirt_pool" "okd" {
   name = "okd"
   type = "dir"
-  path = "/var/lib/libvirt/volumes/okd"
+  path = "/var/lib/libvirt/images/okd"
 
   lifecycle {
     create_before_destroy = true

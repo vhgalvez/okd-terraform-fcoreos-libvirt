@@ -18,6 +18,6 @@ resource "libvirt_pool" "okd_pool" {
   type = "dir"
 
   target {
-    path = "/var/lib/libvirt/volumes/okd"
+    path = "/var/lib/libvirt/images/okd"
   }
 }
