@@ -1,10 +1,5 @@
-
 # terraform/ignition.tf
-
-# NOTA IMPORTANTE:
-# Los archivos bootstrap.ign, master.ign y worker.ign
-# deben existir en ../ignition, generados por openshift-install
-# (NO los escribes a mano, los saca OKD).
+# Cargar Ignition generada por openshift-install
 
 resource "libvirt_ignition" "bootstrap" {
   name    = "bootstrap.ign"
