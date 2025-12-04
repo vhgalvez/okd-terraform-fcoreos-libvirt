@@ -24,7 +24,7 @@ sudo dnf install -y wget curl tar
 Si ya tienes el script `install_okd_tools.sh` en tu repositorio, ponle permisos:
 
 ```bash
-chmod +x install_okd_tools.sh
+sudo chmod +x install_okd_tools.sh
 ```
 
 ---

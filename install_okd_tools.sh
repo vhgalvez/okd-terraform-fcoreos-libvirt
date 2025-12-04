@@ -25,8 +25,8 @@ echo "==============================================="
 echo "[+] Descargando oc CLI..."
 sudo curl -L -o /tmp/oc.tar.gz "$OC_URL"
 
-echo "[+] Descomprimiendo oc..."
-tar -xzf /tmp/oc.tar.gz -C /tmp
+echo "[+] Descomprimiendo oc (solo binario oc)..."
+tar -xzf /tmp/oc.tar.gz -C /tmp oc
 
 echo "[+] Moviendo oc a ${BIN_DIR}"
 sudo mv /tmp/oc "$BIN_DIR/oc"
@@ -40,7 +40,7 @@ if ! echo "$PATH" | grep -q "$BIN_DIR"; then
 fi
 
 echo "[+] oc instalado correctamente:"
-oc version || echo "oc instalado pero sin conexión a cluster"
+oc version || echo "oc instalado pero sin conexión al cluster"
 
 
 echo
@@ -53,15 +53,15 @@ cd /tmp
 echo "[+] Descargando instalador OKD..."
 wget -q "$OKD_URL" -O /tmp/openshift-install.tar.gz
 
-echo "[+] Verificando SHA256 de openshift-install..."
+echo "[+] Verificando SHA256..."
 OKD_SHA256_ACTUAL=$(sha256sum /tmp/openshift-install.tar.gz | awk '{print $1}')
 
 echo "  - Esperado: $OKD_SHA256_EXPECTED"
 echo "  - Actual:   $OKD_SHA256_ACTUAL"
 
 if [[ "$OKD_SHA256_ACTUAL" != "$OKD_SHA256_EXPECTED" ]]; then
-    echo "❌ ERROR: la verificación SHA256 FALLÓ"
-    echo "   El archivo puede estar corrupto o manipulado."
+    echo "❌ ERROR: verificación SHA256 FALLÓ"
+    echo "   El archivo está corrupto o fue modificado."
     exit 1
 else
     echo "✔ Hash SHA256 verificado correctamente."
@@ -75,7 +75,7 @@ sudo mv openshift-install "$BIN_DIR/"
 sudo chmod +x "$BIN_DIR/openshift-install"
 
 echo
-echo "[+] Comprobando versión:"
+echo "[+] Comprobando versión de openshift-install:"
 openshift-install version
 
 echo
