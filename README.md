@@ -8,6 +8,8 @@ Este documento explica, **ordenado y corregido**, cómo se conectan:
 - Ignition (`bootstrap.ign`, `master.ign`, `worker.ign`)
 - Terraform + libvirt + Fedora CoreOS
 
+
+
 ---
 
 ## 1. Ignition: idea general
@@ -57,11 +59,14 @@ Esto creará dentro de `install-config/`:
 - `master.ign`
 - `worker.ign`
 
-Opcionalmente puedes copiarlos a una carpeta `ignition/`:
+copiarlos a una carpeta `ignition/`:
 
 ```bash
-mkdir -p ../ignition
-cp bootstrap.ign master.ign worker.ign ../ignition/
+
+cp bootstrap.ign ../terraform/ignition/
+cp master.ign ../terraform/ignition/
+cp worker.ign ../terraform/ignition/
+
 ```
 
 Terraform luego inyectará esos `.ign` en las VMs de Fedora CoreOS.
