@@ -68,12 +68,13 @@ if [[ ! -d "$TERRAFORM_DIR" ]]; then
     exit 1
 fi
 
-cd "$TERRAFORM_DIR"
+terraform -chdir="$TERRAFORM_DIR" init -input=false
 
-terraform init -input=false
-terraform apply -auto-approve -input=false
-
-cd ..
+# ⬅ CORRECCIÓN CRÍTICA: LEER terraform.tfvars
+terraform -chdir="$TERRAFORM_DIR" apply \
+    -auto-approve \
+    -input=false \
+    -var-file="terraform.tfvars"
 
 echo "✔ Terraform aplicado correctamente."
 
