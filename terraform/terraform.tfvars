@@ -63,8 +63,10 @@ worker = {
 # ================================
 #  DNS / RED
 # ================================
-dns1           = "10.17.3.10"
-dns2           = "8.8.8.8"
+
+
+dns1           = "8.8.8.8"
+dns2           = "10.17.3.10"
 gateway        = "10.17.3.1"
 cluster_domain = "cefaslocalserver.com"
 timezone       = "UTC"
