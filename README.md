@@ -309,99 +309,7 @@ sudo nano /etc/sysconfig/nftables.conf
 
 ---
 
-
-----
-
-📌 OKD 4.19 + SCOS – Configuración correcta en servidores sin AVX (DL380 G7)
-
-Desde OKD 4.18+, el sistema operativo para bootstrap, masters y workers ya no es Fedora CoreOS (FCOS).
-El sistema operativo obligatorio ahora es:
-
-⭐ SCOS – Stream CoreOS (basado en CentOS Stream 9)
-
-SCOS es necesario porque FCOS 40/41 exige CPUs x86-64-v3 (AVX), lo cual produce el error:
-
-Fatal glibc error: CPU does not support x86-64-v3
-
-
-Tu HP ProLiant DL380 G7 no soporta AVX, por lo que solo SCOS funciona.
-
-✅ 1. Descargar herramientas OKD 4.19 (SCOS)
-OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.19.0-okd-scos.9/openshift-client-linux-4.19.0-okd-scos.9.tar.gz"
-OKD_CLIENT_SHA256="ddf3b97db74d7eb4961699a249f36a47b3989e12e0352cf66acfec194d3bc241"
-
-OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.19.0-okd-scos.9/openshift-install-linux-4.19.0-okd-scos.9.tar.gz"
-OKD_INSTALLER_SHA256="1f675e79eca69686d423af1e1bb5faf4629cdf56ee5bb71b3beed6811523afcb"
-
-✅ 2. Descargar la imagen SCOS compatible con OKD 4.19
-sudo wget https://rhcos.mirror.openshift.com/art/storage/prod/streams/c9s/builds/9.0.20250515-0/x86_64/scos-9.0.20250515-0-metal.x86_64.raw.gz
-gzip -dk scos-9.0.20250515-0-metal.x86_64.raw.gz
-
-
-Resultado:
-
-scos-9.0.20250515-0-metal.x86_64.raw
-
-🚀 3. Reemplazar FCOS por SCOS en Terraform
-
-Ejemplo de variable antes (INCORRECTO):
-
-coreos_image = "/var/lib/libvirt/images/fedora-coreos-41.20250315.3.0-qemu.x86_64.qcow2"
-
-
-Ejemplo corregido:
-
-coreos_image = "/var/lib/libvirt/images/scos-9.0.20250515-0-metal.x86_64.raw"
-
-
-✔ Terraform soporta RAW nativamente
-✔ No es necesario convertir a qcow2
-
-🖥 4. SCOS debe usarse en todos los nodos
-
-Bootstrap
-
-Masters
-
-Workers
-
-Todos arrancan desde la misma imagen SCOS.
-
-🔧 5. Ignition funciona sin cambios
-
-Comando estándar:
-
-openshift-install create ignition-configs
-
-
-Genera:
-
-bootstrap.ign
-master.ign
-worker.ign
-
-
-SCOS usa Ignition v3 → totalmente compatible.
-
-🟢 6. Resultado esperado
-
-Con SCOS + OKD 4.19:
-
-✔ Bootstrap arranca sin errores
-✔ node-image-pull.service deja de fallar
-✔ bootkube.service inicia correctamente
-✔ El instalador ya no usa binarios glibc x86-64-v3
-✔ El clúster continúa la instalación normal
-
-Esto resuelve por completo el error de CPU y permite ejecutar OKD 4.19 en hardware antiguo como ProLiant DL380 G7.
-
-
-
-
-
 ## Instalación de herramientas OKD (`oc` + `openshift-install`) en Rocky Linux [Instalación de herramientas OKD ](install_okd.md)
-
-
 
 
 ## Configura el `kubeconfig` para acceder al clúster OKD desde la máquina host.
@@ -412,8 +320,6 @@ Esto resuelve por completo el error de CPU y permite ejecutar OKD 4.19 en hardwa
 ./configure_okd_kubeconfig.sh
 
 ```
-
-
 
 
 sudo chown -R victory:victory /home/victory/okd-terraform-fcoreos-libvirt

@@ -9,8 +9,8 @@ echo "==============================================="
 OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.19.0-okd-scos.9/openshift-client-linux-4.19.0-okd-scos.9.tar.gz"
 OKD_CLIENT_SHA256="ddf3b97db74d7eb4961699a249f36a47b3989e12e0352cf66acfec194d3bc241"
 
-OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.19.0-okd-scos.9/openshift-install-linux-4.19.0-okd-scos.9.tar.gz"
-OKD_INSTALLER_SHA256="1f675e79eca69686d423af1e1bb5faf4629cdf56ee5bb71b3beed6811523afcb"
+OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.12.0-0.okd-2023-01-21-042244/openshift-client-linux-4.12.0-0.okd-2023-01-21-042244.tar.gz"
+OKD_INSTALLER_SHA256="cc1ed09f796d5fc5bebae30a3f1c3e039c6229c1de4a12dfea59c7ea93a7e8a3"
 
 BIN_DIR="/opt/bin"
 TMP_CLIENT="/tmp/okd-client"
