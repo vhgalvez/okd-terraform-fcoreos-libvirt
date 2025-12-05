@@ -6,7 +6,7 @@ echo "  Configurando kubeconfig para OKD"
 echo "==============================================="
 
 KCFG="$HOME/.kube/config"
-OKD_SOURCE="auth/kubeconfig"
+OKD_SOURCE="install-config/auth/kubeconfig"
 
 # Borrar kubeconfig previo
 if [ -f "$KCFG" ]; then
@@ -23,7 +23,7 @@ if [ -f "$OKD_SOURCE" ]; then
     cp "$OKD_SOURCE" "$KCFG"
     chmod 600 "$KCFG"
 else
-    echo "❌ ERROR: No se encontró auth/kubeconfig"
+    echo "❌ ERROR: No se encontró $OKD_SOURCE"
     exit 1
 fi
 
