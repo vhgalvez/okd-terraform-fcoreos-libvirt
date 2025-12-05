@@ -24,7 +24,7 @@ ssh_keys = [
 # ================================
 infra = {
   cpus     = 1
-  memory   = 2048
+  memory   = 1024
   ip       = "10.56.0.10"
   hostname = "infra.okd.local"
 }
@@ -33,8 +33,8 @@ infra = {
 #  BOOTSTRAP
 # ================================
 bootstrap = {
-  cpus   = 2
-  memory = 4096
+  cpus   = 4
+  memory = 8192
   ip     = "10.56.0.11"
   mac    = "52:54:00:00:00:11"
 }
@@ -43,7 +43,7 @@ bootstrap = {
 #  MASTER
 # ================================
 master = {
-  cpus   = 2
+  cpus   = 
   memory = 6144
   ip     = "10.56.0.12"
   mac    = "52:54:00:00:00:12"
