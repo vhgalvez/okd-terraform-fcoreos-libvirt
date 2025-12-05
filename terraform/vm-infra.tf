@@ -16,12 +16,18 @@ data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
 
   vars = {
+    # Hostnames
     hostname       = var.infra.hostname
+    short_hostname = split(".", var.infra.hostname)[0]
+
+    # Red
     ip             = var.infra.ip
     gateway        = var.gateway
     dns1           = var.dns1
     dns2           = var.dns2
     cluster_domain = var.cluster_domain
+
+    # SSH / zona horaria
     ssh_keys       = jsonencode(var.ssh_keys)
     timezone       = var.timezone
   }
@@ -56,7 +62,7 @@ resource "libvirt_domain" "infra" {
 
   cloudinit = libvirt_cloudinit_disk.infra_init.id
 
-  # 🔥 FORZAMOS VNC — evita SPICE y corrige el error:
+  # 🔥 Forzamos VNC — evita SPICE:
   # “spice graphics are not supported with this QEMU”
   graphics {
     type           = "vnc"
