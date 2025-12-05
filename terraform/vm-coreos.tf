@@ -24,10 +24,17 @@ resource "libvirt_volume" "worker_disk" {
   pool           = libvirt_pool.okd.name
 }
 
+#############################################
+# BOOTSTRAP
+#############################################
 resource "libvirt_domain" "bootstrap" {
   name   = "okd-bootstrap"
   memory = var.bootstrap.memory
   vcpu   = var.bootstrap.cpus
+
+  cpu {
+    mode = "host-passthrough"
+  }
 
   network_interface {
     network_id = libvirt_network.okd_net.id
@@ -40,12 +47,32 @@ resource "libvirt_domain" "bootstrap" {
   }
 
   coreos_ignition = file("${path.module}/../ignition/bootstrap.ign")
+
+  graphics {
+    type        = "vnc"
+    autoport    = true
+    listen_type = "address"
+    listen_address = "0.0.0.0"
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
+  }
 }
 
+#############################################
+# MASTER
+#############################################
 resource "libvirt_domain" "master" {
   name   = "okd-master"
   memory = var.master.memory
   vcpu   = var.master.cpus
+
+  cpu {
+    mode = "host-passthrough"
+  }
 
   network_interface {
     network_id = libvirt_network.okd_net.id
@@ -58,12 +85,32 @@ resource "libvirt_domain" "master" {
   }
 
   coreos_ignition = file("${path.module}/../ignition/master.ign")
+
+  graphics {
+    type        = "vnc"
+    autoport    = true
+    listen_type = "address"
+    listen_address = "0.0.0.0"
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
+  }
 }
 
+#############################################
+# WORKER
+#############################################
 resource "libvirt_domain" "worker" {
   name   = "okd-worker"
   memory = var.worker.memory
   vcpu   = var.worker.cpus
+
+  cpu {
+    mode = "host-passthrough"
+  }
 
   network_interface {
     network_id = libvirt_network.okd_net.id
@@ -76,4 +123,17 @@ resource "libvirt_domain" "worker" {
   }
 
   coreos_ignition = file("${path.module}/../ignition/worker.ign")
+
+  graphics {
+    type        = "vnc"
+    autoport    = true
+    listen_type = "address"
+    listen_address = "0.0.0.0"
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
+  }
 }
