@@ -1,5 +1,9 @@
 # terraform/vm-coreos.tf
 
+#############################################
+# BASE COREOS IMAGE
+#############################################
+
 resource "libvirt_volume" "coreos_base" {
   name   = "fcos-base"
   source = var.coreos_image
@@ -25,8 +29,9 @@ resource "libvirt_volume" "worker_disk" {
 }
 
 #############################################
-# BOOTSTRAP
+# BOOTSTRAP NODE
 #############################################
+
 resource "libvirt_domain" "bootstrap" {
   name   = "okd-bootstrap"
   memory = var.bootstrap.memory
@@ -46,12 +51,13 @@ resource "libvirt_domain" "bootstrap" {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-  coreos_ignition = file("${path.module}/../ignition/bootstrap.ign")
+  # 🔥 Solución correcta para Ignition
+  ignition = libvirt_ignition.bootstrap.id
 
   graphics {
-    type        = "vnc"
-    autoport    = true
-    listen_type = "address"
+    type           = "vnc"
+    autoport       = true
+    listen_type    = "address"
     listen_address = "0.0.0.0"
   }
 
@@ -63,8 +69,9 @@ resource "libvirt_domain" "bootstrap" {
 }
 
 #############################################
-# MASTER
+# MASTER NODE
 #############################################
+
 resource "libvirt_domain" "master" {
   name   = "okd-master"
   memory = var.master.memory
@@ -84,12 +91,12 @@ resource "libvirt_domain" "master" {
     volume_id = libvirt_volume.master_disk.id
   }
 
-  coreos_ignition = file("${path.module}/../ignition/master.ign")
+  ignition = libvirt_ignition.master.id
 
   graphics {
-    type        = "vnc"
-    autoport    = true
-    listen_type = "address"
+    type           = "vnc"
+    autoport       = true
+    listen_type    = "address"
     listen_address = "0.0.0.0"
   }
 
@@ -101,8 +108,9 @@ resource "libvirt_domain" "master" {
 }
 
 #############################################
-# WORKER
+# WORKER NODE
 #############################################
+
 resource "libvirt_domain" "worker" {
   name   = "okd-worker"
   memory = var.worker.memory
@@ -122,12 +130,12 @@ resource "libvirt_domain" "worker" {
     volume_id = libvirt_volume.worker_disk.id
   }
 
-  coreos_ignition = file("${path.module}/../ignition/worker.ign")
+  ignition = libvirt_ignition.worker.id
 
   graphics {
-    type        = "vnc"
-    autoport    = true
-    listen_type = "address"
+    type           = "vnc"
+    autoport       = true
+    listen_type    = "address"
     listen_address = "0.0.0.0"
   }
 
