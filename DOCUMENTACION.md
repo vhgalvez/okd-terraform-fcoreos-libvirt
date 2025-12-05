@@ -29,11 +29,13 @@ Antes de empezar, define:
 
 ### 🔹 Red virtual (ejemplo)
 
+- Nombre: okd-net 
 - 10.17.3.0/24  
-- 10.17.3.10 → infra  
-- 10.17.3.21 → bootstrap  
-- 10.17.3.22 → master  
-- 10.17.3.23 → worker  
+- bootstrap = "10.56.0.11"
+- infra     = "10.56.0.10"
+- master    = "10.56.0.12"
+- worker    = "10.56.0.13"
+
 
 ### 🔹 Recursos recomendados
 
