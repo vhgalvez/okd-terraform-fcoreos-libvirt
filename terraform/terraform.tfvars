@@ -10,8 +10,8 @@ network_cidr = "10.17.3.0/24"
 # ================================
 #  IMÁGENES
 # ================================
-coreos_image    = "/var/lib/libvirt/images/fedora-coreos.qcow2"
-almalinux_image = "/var/lib/libvirt/images/AlmaLinux-9-GenericCloud.qcow2"
+coreos_image    = "/var/lib/libvirt/images/fedora-coreos-41.20250315.3.0-qemu.x86_64.qcow2"
+almalinux_image = "/var/lib/libvirt/images/AlmaLinux-9-GenericCloud-9.5-20241120.x86_64.qcow2"
 
 # ================================
 #  SSH KEY
@@ -61,7 +61,7 @@ worker = {
 }
 
 # ================================
-#  RED Y DNS
+#  DNS / RED
 # ================================
 dns1           = "10.17.3.10"
 dns2           = "8.8.8.8"
