@@ -51,8 +51,9 @@ resource "libvirt_domain" "bootstrap" {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-  # 🔥 Solución correcta para Ignition
-  ignition = libvirt_ignition.bootstrap.id
+  # 🔥 Ignition correcto vía fw_cfg
+  fw_cfg_name = "opt/com.coreos/config"
+  fw_cfg_data = libvirt_ignition.bootstrap.content
 
   graphics {
     type           = "vnc"
@@ -91,7 +92,8 @@ resource "libvirt_domain" "master" {
     volume_id = libvirt_volume.master_disk.id
   }
 
-  ignition = libvirt_ignition.master.id
+  fw_cfg_name = "opt/com.coreos/config"
+  fw_cfg_data = libvirt_ignition.master.content
 
   graphics {
     type           = "vnc"
@@ -130,7 +132,8 @@ resource "libvirt_domain" "worker" {
     volume_id = libvirt_volume.worker_disk.id
   }
 
-  ignition = libvirt_ignition.worker.id
+  fw_cfg_name = "opt/com.coreos/config"
+  fw_cfg_data = libvirt_ignition.worker.content
 
   graphics {
     type           = "vnc"
