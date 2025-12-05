@@ -1,27 +1,22 @@
 # terraform/network.tf
 resource "libvirt_network" "okd_net" {
-  name      = var.network_name                 # ej: "okd-net"
+  name      = var.network_name          # Ej: "okd-net"
   mode      = "nat"
-  bridge    = "virbr_okd"                      # puente dedicado, libvirt lo crea
+  bridge    = "virbr_okd"               # Nombre del puente que creará libvirt
   domain    = "okd.internal"
   autostart = true
 
-  # Rango de red, ej: "10.17.3.0/24"
+  # CIDR definido en terraform.tfvars: "10.17.3.0/24"
   addresses = [var.network_cidr]
 
-  # IMPORTANTE: habilitar DHCP aunque vayas a usar IPs estáticas
+  # DHCP habilitado (aunque todas tus VMs lleven IP estática)
   dhcp {
     enabled = true
   }
 
-  # ACTIVAR DNSMASQ
+  # Habilita dnsmasq interno de libvirt
   dns {
-    enabled    = true        # activa dnsmasq interno de libvirt
-    local_only = false       # permite reenviar consultas hacia fuera
-  }
-
-  # MEGA IMPORTANTE: NAT EXPLÍCITO PARA SALIDA A INTERNET
-  iptables {
-    ipv4_nat = true
+    enabled    = true
+    local_only = false
   }
 }
