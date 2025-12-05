@@ -28,6 +28,7 @@ resource "libvirt_volume" "worker_disk" {
   pool           = libvirt_pool.okd.name
 }
 
+
 #############################################
 # BOOTSTRAP NODE
 #############################################
@@ -51,9 +52,8 @@ resource "libvirt_domain" "bootstrap" {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-  # 🔥 Ignition correcto vía fw_cfg
-  fw_cfg_name = "opt/com.coreos/config"
-  fw_cfg_data = libvirt_ignition.bootstrap.content
+  # ✔ Ignition correcta usando provider oficial
+  coreos_ignition = libvirt_ignition.bootstrap.id
 
   graphics {
     type           = "vnc"
@@ -68,6 +68,7 @@ resource "libvirt_domain" "bootstrap" {
     target_port = "0"
   }
 }
+
 
 #############################################
 # MASTER NODE
@@ -92,8 +93,7 @@ resource "libvirt_domain" "master" {
     volume_id = libvirt_volume.master_disk.id
   }
 
-  fw_cfg_name = "opt/com.coreos/config"
-  fw_cfg_data = libvirt_ignition.master.content
+  coreos_ignition = libvirt_ignition.master.id
 
   graphics {
     type           = "vnc"
@@ -108,6 +108,7 @@ resource "libvirt_domain" "master" {
     target_port = "0"
   }
 }
+
 
 #############################################
 # WORKER NODE
@@ -132,8 +133,7 @@ resource "libvirt_domain" "worker" {
     volume_id = libvirt_volume.worker_disk.id
   }
 
-  fw_cfg_name = "opt/com.coreos/config"
-  fw_cfg_data = libvirt_ignition.worker.content
+  coreos_ignition = libvirt_ignition.worker.id
 
   graphics {
     type           = "vnc"
