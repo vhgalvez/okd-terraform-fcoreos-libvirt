@@ -423,6 +423,10 @@ cd install-config
 openshift-install wait-for bootstrap-complete --log-level=info
 
 
+cat install-config/install-config.yaml | grep sshKey -n -A2
+
+
+sudo grep -o "ssh-rsa" ignition/bootstrap.ign | wc -l
 
 
 verificar si la clave ssh está en el ignition del bootstrap
