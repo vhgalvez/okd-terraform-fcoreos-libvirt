@@ -412,3 +412,12 @@ Esto resuelve por completo el error de CPU y permite ejecutar OKD 4.19 en hardwa
 ./configure_okd_kubeconfig.sh
 
 ```
+
+
+
+
+sudo chown -R victory:victory /home/victory/okd-terraform-fcoreos-libvirt
+
+cd install-config
+
+openshift-install wait-for bootstrap-complete --log-level=info
