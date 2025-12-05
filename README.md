@@ -421,3 +421,9 @@ sudo chown -R victory:victory /home/victory/okd-terraform-fcoreos-libvirt
 cd install-config
 
 openshift-install wait-for bootstrap-complete --log-level=info
+
+
+
+
+verificar si la clave ssh está en el ignition del bootstrap
+grep -R "ssh" -n ignition/bootstrap.ign
