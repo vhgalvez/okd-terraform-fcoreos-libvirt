@@ -337,3 +337,7 @@ sudo grep -o "ssh-rsa" ignition/bootstrap.ign | wc -l
 
 verificar si la clave ssh está en el ignition del bootstrap
 grep -R "ssh" -n ignition/bootstrap.ign
+
+
+## error
+error [error](error.md)
