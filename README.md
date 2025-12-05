@@ -394,3 +394,8 @@ Con SCOS + OKD 4.19:
 ✔ El clúster continúa la instalación normal
 
 Esto resuelve por completo el error de CPU y permite ejecutar OKD 4.19 en hardware antiguo como ProLiant DL380 G7.
+
+
+
+
+Instalación de herramientas OKD (`oc` + `openshift-install`) en Rocky Linux [Instalación de herramientas OKD ](install_okd.md)
