@@ -28,24 +28,6 @@ resource "libvirt_volume" "worker_disk" {
 }
 
 #############################################
-# COMMON GRAPHICS (VNC ONLY)
-#############################################
-# evitar SPICE (incompatible con tu QEMU en G7)
-
-locals {
-  graphics = [{
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
-  }]
-
-  video = [{
-    type = "vga"
-  }]
-}
-
-#############################################
 # BOOTSTRAP NODE
 #############################################
 
@@ -68,11 +50,18 @@ resource "libvirt_domain" "bootstrap" {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-  # ✔ Ignition del provider oficial
   coreos_ignition = libvirt_ignition.bootstrap.id
 
-  graphics = local.graphics
-  video    = local.video
+  graphics {
+    type           = "vnc"
+    autoport       = true
+    listen_type    = "address"
+    listen_address = "0.0.0.0"
+  }
+
+  video {
+    type = "vga"
+  }
 
   console {
     type        = "pty"
@@ -106,8 +95,16 @@ resource "libvirt_domain" "master" {
 
   coreos_ignition = libvirt_ignition.master.id
 
-  graphics = local.graphics
-  video    = local.video
+  graphics {
+    type           = "vnc"
+    autoport       = true
+    listen_type    = "address"
+    listen_address = "0.0.0.0"
+  }
+
+  video {
+    type = "vga"
+  }
 
   console {
     type        = "pty"
@@ -141,8 +138,16 @@ resource "libvirt_domain" "worker" {
 
   coreos_ignition = libvirt_ignition.worker.id
 
-  graphics = local.graphics
-  video    = local.video
+  graphics {
+    type           = "vnc"
+    autoport       = true
+    listen_type    = "address"
+    listen_address = "0.0.0.0"
+  }
+
+  video {
+    type = "vga"
+  }
 
   console {
     type        = "pty"
