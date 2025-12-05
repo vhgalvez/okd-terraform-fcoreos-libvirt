@@ -5,12 +5,14 @@ echo "==============================================="
 echo "  Instalador de herramientas OKD / OpenShift"
 echo "==============================================="
 
-# --- CONFIG ---
-OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.21.0-okd-scos.ec.9/openshift-client-linux-4.21.0-okd-scos.ec.9.tar.gz"
-OKD_CLIENT_SHA256="0277386921fdb2fdfd26800704324b393747c5b3159c70bcb9c0179572bc756a"
 
-OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.21.0-okd-scos.ec.9/openshift-install-linux-4.21.0-okd-scos.ec.9.tar.gz"
-OKD_INSTALLER_SHA256="962291fbba69b7d7bedae4573c9210a4d5692607199e46fd6bde5543653c4bd3"
+# --- CONFIG ---
+OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.19.0-okd-scos.9/openshift-client-linux-4.19.0-okd-scos.9.tar.gz"
+OKD_CLIENT_SHA256="ddf3b97db74d7eb4961699a249f36a47b3989e12e0352cf66acfec194d3bc241"
+
+OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.19.0-okd-scos.9/openshift-install-linux-4.19.0-okd-scos.9.tar.gz"
+OKD_INSTALLER_SHA256="1f675e79eca69686d423af1e1bb5faf4629cdf56ee5bb71b3beed6811523afcb"
+
 
 BIN_DIR="/opt/bin"
 TMP_CLIENT="/tmp/okd-client"
