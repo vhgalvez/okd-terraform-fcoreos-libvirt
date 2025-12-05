@@ -1,5 +1,4 @@
 # terraform/vm-coreos.tf
-
 #############################################
 # BASE COREOS IMAGE
 #############################################
@@ -28,6 +27,23 @@ resource "libvirt_volume" "worker_disk" {
   pool           = libvirt_pool.okd.name
 }
 
+#############################################
+# COMMON GRAPHICS (VNC ONLY)
+#############################################
+# evitar SPICE (incompatible con tu QEMU en G7)
+
+locals {
+  graphics = [{
+    type           = "vnc"
+    autoport       = true
+    listen_type    = "address"
+    listen_address = "0.0.0.0"
+  }]
+
+  video = [{
+    type = "vga"
+  }]
+}
 
 #############################################
 # BOOTSTRAP NODE
@@ -52,15 +68,11 @@ resource "libvirt_domain" "bootstrap" {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-  # ✔ Ignition correcta usando provider oficial
+  # ✔ Ignition del provider oficial
   coreos_ignition = libvirt_ignition.bootstrap.id
 
-  graphics {
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
-  }
+  graphics = local.graphics
+  video    = local.video
 
   console {
     type        = "pty"
@@ -68,7 +80,6 @@ resource "libvirt_domain" "bootstrap" {
     target_port = "0"
   }
 }
-
 
 #############################################
 # MASTER NODE
@@ -95,12 +106,8 @@ resource "libvirt_domain" "master" {
 
   coreos_ignition = libvirt_ignition.master.id
 
-  graphics {
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
-  }
+  graphics = local.graphics
+  video    = local.video
 
   console {
     type        = "pty"
@@ -108,7 +115,6 @@ resource "libvirt_domain" "master" {
     target_port = "0"
   }
 }
-
 
 #############################################
 # WORKER NODE
@@ -135,12 +141,8 @@ resource "libvirt_domain" "worker" {
 
   coreos_ignition = libvirt_ignition.worker.id
 
-  graphics {
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
-  }
+  graphics = local.graphics
+  video    = local.video
 
   console {
     type        = "pty"
