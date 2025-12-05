@@ -38,8 +38,9 @@ write_files:
 
       [ipv4]
       method=manual
-      addresses1=${ip}/24;${gateway};
-      dns=${dns1};${dns2};
+      # OJO: address1 (no addresses1) y sin ; extra al final
+      address1=${ip}/24;${gateway}
+      dns=${dns1};${dns2}
       dns-search=okd-lab.${cluster_domain}
       may-fail=false
       route-metric=10
@@ -107,7 +108,7 @@ write_files:
       Wants=network-online.target
 
       [Service]
-      ExecStart=/usr/bin/coredns -conf=/etc/coredns/Corefile
+      ExecStart=/usr/local/bin/coredns -conf=/etc/coredns/Corefile
       Restart=always
       LimitNOFILE=1048576
 
@@ -131,16 +132,16 @@ runcmd:
   # Actualizar paquetes base
   - [ dnf, -y, update ]
 
-  # Instalar firewalld y chrony (CoreDNS lo metemos por binario)
-  - [ dnf, install, -y, firewalld, chrony ]
+  # Instalar herramientas necesarias (incluye curl, tar, firewalld, chrony)
+  - [ dnf, install, -y, curl, tar, firewalld, chrony ]
 
   # Preparar directorio de CoreDNS
   - [ mkdir, -p, /etc/coredns ]
 
-  # Descargar y desplegar CoreDNS (binario oficial)
-  - [ bash, -c, "cd /usr/bin && curl -L -o coredns.tgz https://github.com/coredns/coredns/releases/latest/download/coredns_amd64.tgz" ]
-  - [ bash, -c, "cd /usr/bin && tar -xzf coredns.tgz && rm -f coredns.tgz" ]
-  - [ chmod, "+x", /usr/bin/coredns ]
+  # Descargar y desplegar CoreDNS (binario oficial, versión fija)
+  - [ bash, -c, "curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz" ]
+  - [ bash, -c, "tar -xzf /tmp/coredns.tgz -C /usr/local/bin && rm -f /tmp/coredns.tgz" ]
+  - [ chmod, "+x", /usr/local/bin/coredns ]
 
   # Recargar systemd y habilitar servicios
   - [ systemctl, daemon-reload ]
