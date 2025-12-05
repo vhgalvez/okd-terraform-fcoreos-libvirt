@@ -1,4 +1,7 @@
 # terraform/main.tf
+#############################################
+#            TERRAFORM CONFIG
+#############################################
 terraform {
   required_version = ">= 1.10.0, < 2.0.0"
 
@@ -14,19 +17,34 @@ terraform {
   }
 }
 
+#############################################
+#              PROVIDERS
+#############################################
 provider "libvirt" {
   uri = "qemu:///system"
 }
 
-# ================================
-#  POOL DE LIBVIRT PARA OKD
-# ================================
+#############################################
+#         LIBVIRT POOL PARA OKD
+#   (CORREGIDO: using target.path)
+#############################################
 resource "libvirt_pool" "okd" {
   name = "okd"
   type = "dir"
-  path = "/var/lib/libvirt/images/okd"
+
+  # Reemplazo correcto para path (evita warning)
+  target {
+    path = "/var/lib/libvirt/images/okd"
+  }
 
   lifecycle {
     create_before_destroy = true
   }
+}
+
+#############################################
+#           OPTIONAL OUTPUTS
+#############################################
+output "pool_okd_path" {
+  value = libvirt_pool.okd.target[0].path
 }
