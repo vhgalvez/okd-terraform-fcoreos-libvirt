@@ -6,7 +6,7 @@
 resource "libvirt_volume" "infra_disk" {
   name   = "okd-infra.qcow2"
   source = var.almalinux_image
-  pool   = libvirt_pool.okd_pool.name
+  pool   = libvirt_pool.okd.name
 }
 
 # ================================
@@ -28,7 +28,7 @@ data "template_file" "infra_cloud_init" {
 
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra_cloudinit.iso"
-  pool      = libvirt_pool.okd_pool.name
+  pool      = libvirt_pool.okd.name
   user_data = data.template_file.infra_cloud_init.rendered
 }
 

@@ -3,25 +3,25 @@
 resource "libvirt_volume" "coreos_base" {
   name   = "fcos-base"
   source = var.coreos_image
-  pool   = libvirt_pool.okd_pool.name
+  pool   = libvirt_pool.okd.name
 }
 
 resource "libvirt_volume" "bootstrap_disk" {
   name           = "bootstrap.qcow2"
   base_volume_id = libvirt_volume.coreos_base.id
-  pool           = libvirt_pool.okd_pool.name
+  pool           = libvirt_pool.okd.name
 }
 
 resource "libvirt_volume" "master_disk" {
   name           = "master.qcow2"
   base_volume_id = libvirt_volume.coreos_base.id
-  pool           = libvirt_pool.okd_pool.name
+  pool           = libvirt_pool.okd.name
 }
 
 resource "libvirt_volume" "worker_disk" {
   name           = "worker.qcow2"
   base_volume_id = libvirt_volume.coreos_base.id
-  pool           = libvirt_pool.okd_pool.name
+  pool           = libvirt_pool.okd.name
 }
 
 resource "libvirt_domain" "bootstrap" {

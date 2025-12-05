@@ -4,18 +4,18 @@
 
 resource "libvirt_ignition" "bootstrap" {
   name    = "bootstrap.ign"
-  pool    = libvirt_pool.okd_pool.name
+  pool    = libvirt_pool.okd.name
   content = file("${path.module}/../ignition/bootstrap.ign")
 }
 
 resource "libvirt_ignition" "master" {
   name    = "master.ign"
-  pool    = libvirt_pool.okd_pool.name
+  pool    = libvirt_pool.okd.name
   content = file("${path.module}/../ignition/master.ign")
 }
 
 resource "libvirt_ignition" "worker" {
   name    = "worker.ign"
-  pool    = libvirt_pool.okd_pool.name
+  pool    = libvirt_pool.okd.name
   content = file("${path.module}/../ignition/worker.ign")
 }

@@ -12,12 +12,3 @@ resource "libvirt_network" "okd_net" {
     enabled = true
   }
 }
-
-resource "libvirt_pool" "okd_pool" {
-  name = "okd"        # nombre correcto del pool
-  type = "dir"
-
-  target {
-    path = "/var/lib/libvirt/images/okd"
-  }
-}
