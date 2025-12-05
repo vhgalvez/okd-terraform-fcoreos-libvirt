@@ -6,7 +6,7 @@ metadata:
 # Redes internas del cluster
 networking:
   networkType: OVNKubernetes
-  machineCIDR: 10.17.3.0/24
+  machineCIDR: 10.56.0.0/24
   clusterNetwork:
     - cidr: 10.128.0.0/14
       hostPrefix: 23
