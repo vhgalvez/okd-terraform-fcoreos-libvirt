@@ -39,7 +39,7 @@ Antes de empezar, define:
 
 | Nodo      | vCPU | RAM      |
 |-----------|------|----------|
-| infra     | 1    | 512 MB   |
+| infra     | 1    | 2 GB     |
 | bootstrap | 2    | 4 GB     |
 | master1   | 2    | 6 GB     |
 | worker1   | 2    | 8 GB     |

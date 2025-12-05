@@ -398,4 +398,17 @@ Esto resuelve por completo el error de CPU y permite ejecutar OKD 4.19 en hardwa
 
 
 
-Instalación de herramientas OKD (`oc` + `openshift-install`) en Rocky Linux [Instalación de herramientas OKD ](install_okd.md)
+
+## Instalación de herramientas OKD (`oc` + `openshift-install`) en Rocky Linux [Instalación de herramientas OKD ](install_okd.md)
+
+
+
+
+## Configura el `kubeconfig` para acceder al clúster OKD desde la máquina host.
+
+```bash
+  sudo chmod +x ./configure_okd_kubeconfig.sh
+
+./configure_okd_kubeconfig.sh
+
+```
