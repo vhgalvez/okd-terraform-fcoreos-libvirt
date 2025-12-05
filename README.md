@@ -278,3 +278,33 @@ terraform destroy -auto-approve
 - ✔ Simular un entorno OpenShift corporativo en tu homelab
 - ✔ Alternar entre K3s (ligero) y OKD (pesado) cuando quieras
 
+
+---
+
+sudo nano /etc/sysconfig/nftables.conf
+
+## Aplicar la configuración y habilitar el servicio
+
+1. **Cargar las reglas**:
+
+   ```bash
+   sudo nft -f /etc/sysconfig/nftables.conf
+   sudo nft list ruleset | sudo tee /etc/sysconfig/nftables.conf
+   ```
+
+2. **Habilitar el servicio `nftables` para que se cargue al inicio**:
+
+   ```bash
+   sudo systemctl daemon-reexec
+   sudo systemctl enable --now nftables
+   sudo systemctl restart nftables
+   sudo systemctl status nftables
+   ```
+
+3. **Validar la configuración**:
+
+   ```bash
+   sudo nft list ruleset
+   ```
+
+---

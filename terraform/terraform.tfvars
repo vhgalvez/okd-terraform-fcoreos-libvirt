@@ -1,11 +1,10 @@
 
 # terraform\terraform.tfvars
-
 # ================================
 #  RED
 # ================================
 network_name = "okd-net"
-network_cidr = "10.17.3.0/24"
+network_cidr = "10.56.0.0/24"
 
 # ================================
 #  IMÁGENES
@@ -21,12 +20,12 @@ ssh_keys = [
 ]
 
 # ================================
-#  SERVIDOR INFRA
+#  SERVIDOR INFRA (DNS + NTP)
 # ================================
 infra = {
   cpus     = 1
   memory   = 2048
-  ip       = "10.17.3.10"
+  ip       = "10.56.0.10"
   hostname = "infra.okd.local"
 }
 
@@ -36,8 +35,8 @@ infra = {
 bootstrap = {
   cpus   = 2
   memory = 4096
-  ip     = "10.17.3.21"
-  mac    = "52:54:00:00:00:01"
+  ip     = "10.56.0.11"
+  mac    = "52:54:00:00:00:11"
 }
 
 # ================================
@@ -46,8 +45,8 @@ bootstrap = {
 master = {
   cpus   = 2
   memory = 6144
-  ip     = "10.17.3.22"
-  mac    = "52:54:00:00:00:02"
+  ip     = "10.56.0.12"
+  mac    = "52:54:00:00:00:12"
 }
 
 # ================================
@@ -56,17 +55,15 @@ master = {
 worker = {
   cpus   = 2
   memory = 8192
-  ip     = "10.17.3.23"
-  mac    = "52:54:00:00:00:03"
+  ip     = "10.56.0.13"
+  mac    = "52:54:00:00:00:13"
 }
 
 # ================================
 #  DNS / RED
 # ================================
-
-
 dns1           = "8.8.8.8"
-dns2           = "10.17.3.10"
-gateway        = "10.17.3.1"
+dns2           = "10.56.0.10" # DNS interno (infra)
+gateway        = "10.56.0.1"  # Puente virbr_okd
 cluster_domain = "cefaslocalserver.com"
 timezone       = "UTC"

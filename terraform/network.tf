@@ -1,20 +1,20 @@
 # terraform/network.tf
+
 resource "libvirt_network" "okd_net" {
-  name      = var.network_name          # Ej: "okd-net"
+  name      = "okd-net"
   mode      = "nat"
-  bridge    = "virbr_okd"               # Nombre del puente que creará libvirt
+  bridge    = "virbr_okd"
   domain    = "okd.internal"
   autostart = true
 
-  # CIDR definido en terraform.tfvars: "10.17.3.0/24"
-  addresses = [var.network_cidr]
+  # Nueva red OKD
+  addresses = ["10.56.0.0/24"]
 
-  # DHCP habilitado (aunque todas tus VMs lleven IP estática)
   dhcp {
     enabled = true
   }
 
-  # Habilita dnsmasq interno de libvirt
+  # Activar dnsmasq para resolución interna
   dns {
     enabled    = true
     local_only = false

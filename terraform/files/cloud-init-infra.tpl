@@ -25,7 +25,6 @@ growpart:
 
 resize_rootfs: true
 
-
 ###########################################################
 # WRITE_FILES
 ###########################################################
@@ -55,6 +54,7 @@ write_files:
       [ipv6]
       method=ignore
 
+
   # ──────────────────────────────────────────────
   # /etc/hosts gestionado por script
   # ──────────────────────────────────────────────
@@ -67,6 +67,7 @@ write_files:
       echo "::1         localhost" >> /etc/hosts
       echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
+
   # ──────────────────────────────────────────────
   # sysctl custom (IP forwarding + bind)
   # ──────────────────────────────────────────────
@@ -76,6 +77,7 @@ write_files:
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
 
+
   # ──────────────────────────────────────────────
   # NetworkManager: no modificar resolv.conf
   # ──────────────────────────────────────────────
@@ -83,6 +85,7 @@ write_files:
     content: |
       [main]
       dns=none
+
 
   # ──────────────────────────────────────────────
   # CoreDNS: Corefile
@@ -98,8 +101,9 @@ write_files:
         forward . 8.8.8.8 1.1.1.1
       }
 
+
   # ──────────────────────────────────────────────
-  # CoreDNS: zona DNS interna
+  # CoreDNS: zona DNS interna con LA NUEVA RED 10.56.0.x
   # ──────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
@@ -115,17 +119,18 @@ write_files:
       @       IN NS dns.okd-lab.${cluster_domain}.
       dns     IN A ${ip}
 
-      api         IN A 10.17.3.21
-      api-int     IN A 10.17.3.21
+      api         IN A 10.56.0.11
+      api-int     IN A 10.56.0.11
 
-      bootstrap   IN A 10.17.3.21
-      master      IN A 10.17.3.22
-      worker      IN A 10.17.3.23
+      bootstrap   IN A 10.56.0.11
+      master      IN A 10.56.0.12
+      worker      IN A 10.56.0.13
 
-      *.apps      IN A 10.17.3.23
+      *.apps      IN A 10.56.0.13
+
 
   # ──────────────────────────────────────────────
-  # systemd: CoreDNS service
+  # CoreDNS service (systemd)
   # ──────────────────────────────────────────────
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
@@ -143,17 +148,18 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
+
   # ──────────────────────────────────────────────
-  # Chrony NTP
+  # Chrony — NTP corregido a la nueva red
   # ──────────────────────────────────────────────
   - path: /etc/chrony.conf
     permissions: "0644"
     content: |
-      server 10.17.3.11 iburst prefer
+      server 10.56.0.11 iburst prefer
       server 0.pool.ntp.org iburst
       server 1.pool.ntp.org iburst
       server 2.pool.ntp.org iburst
-      allow 10.17.0.0/16
+      allow 10.56.0.0/24
       driftfile /var/lib/chrony/drift
       makestep 1.0 3
       bindcmdaddress 0.0.0.0
