@@ -14,6 +14,7 @@ resource "libvirt_volume" "infra_disk" {
 # ================================
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
+
   vars = {
     hostname       = var.infra.hostname
     ip             = var.infra.ip
@@ -40,6 +41,10 @@ resource "libvirt_domain" "infra" {
   memory = var.infra.memory
   vcpu   = var.infra.cpus
 
+  cpu {
+    mode = "host-passthrough"
+  }
+
   network_interface {
     network_id = libvirt_network.okd_net.id
     addresses  = [var.infra.ip]
@@ -50,6 +55,19 @@ resource "libvirt_domain" "infra" {
   }
 
   cloudinit = libvirt_cloudinit_disk.infra_init.id
+
+  # 🔥 FORZAMOS VNC — evita SPICE y corrige el error:
+  # “spice graphics are not supported with this QEMU”
+  graphics {
+    type           = "vnc"
+    autoport       = true
+    listen_type    = "address"
+    listen_address = "0.0.0.0"
+  }
+
+  video {
+    type = "vga"
+  }
 
   console {
     type        = "pty"
