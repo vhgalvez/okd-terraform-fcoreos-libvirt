@@ -33,7 +33,7 @@ resize_rootfs: true
 write_files:
 
   # ──────────────────────────────────────────────
-  # NetworkManager con IP estática
+  # NetworkManager (IP estática + DNS primario)
   # ──────────────────────────────────────────────
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
@@ -62,12 +62,13 @@ write_files:
     permissions: "0755"
     content: |
       #!/bin/bash
+      SHORT=$(echo "${hostname}" | cut -d'.' -f1)
       echo "127.0.0.1   localhost" > /etc/hosts
       echo "::1         localhost" >> /etc/hosts
-      echo "${ip}  ${hostname} ${short_hostname}" >> /etc/hosts
+      echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
   # ──────────────────────────────────────────────
-  # sysctl custom
+  # sysctl custom (IP forwarding + bind)
   # ──────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
@@ -76,7 +77,7 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
 
   # ──────────────────────────────────────────────
-  # NetworkManager: no tocar resolv.conf
+  # NetworkManager: no modificar resolv.conf
   # ──────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     content: |
@@ -98,7 +99,7 @@ write_files:
       }
 
   # ──────────────────────────────────────────────
-  # CoreDNS: zona DNS
+  # CoreDNS: zona DNS interna
   # ──────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
@@ -143,7 +144,7 @@ write_files:
       WantedBy=multi-user.target
 
   # ──────────────────────────────────────────────
-  # Chrony extendido
+  # Chrony NTP
   # ──────────────────────────────────────────────
   - path: /etc/chrony.conf
     permissions: "0644"
@@ -156,68 +157,54 @@ write_files:
       driftfile /var/lib/chrony/drift
       makestep 1.0 3
       bindcmdaddress 0.0.0.0
-      bindcmdaddress ::
+      bindcmdaddress :: 
+
 
 ###########################################################
-# RUNCMD — EJECUCIÓN ORDENADA
+# RUNCMD — BOOT ORDER CORRECTO
 ###########################################################
+
 runcmd:
 
-  # ─────────────────────────────
   # Swap
-  # ─────────────────────────────
   - fallocate -l 2G /swapfile
   - chmod 600 /swapfile
   - mkswap /swapfile
   - swapon /swapfile
   - echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
-  # ─────────────────────────────
   # Aplicar /etc/hosts
-  # ─────────────────────────────
   - /usr/local/bin/set-hosts.sh
 
-  # RELOAD NETWORK FIRST
+  # Reload NetworkManager
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
-  # ─────────────────────────────
-  # Paquetes base
-  # ─────────────────────────────
+  # Instalar paquetes base
   - dnf install -y firewalld resolvconf chrony curl tar bind-utils
 
-  # ─────────────────────────────
-  # sysctl custom
-  # ─────────────────────────────
+  # sysctl
   - sysctl --system
 
-  # ─────────────────────────────
-  # resolvconf (DNS real del sistema)
-  # ─────────────────────────────
+  # resolvconf → resolv.conf real
   - echo "nameserver ${dns1}" > /etc/resolvconf/resolv.conf.d/base
   - echo "nameserver ${dns2}" >> /etc/resolvconf/resolv.conf.d/base
   - echo "search okd-lab.${cluster_domain}" >> /etc/resolvconf/resolv.conf.d/base
   - resolvconf -u
 
-  # ─────────────────────────────
-  # CoreDNS download
-  # ─────────────────────────────
+  # CoreDNS instalación
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - rm -f /tmp/coredns.tgz
   - chmod +x /usr/local/bin/coredns
 
-  # ─────────────────────────────
   # Servicios
-  # ─────────────────────────────
   - systemctl daemon-reload
-  - systemctl enable --now firewalld chronyd NetworkManager coredns
+  - systemctl enable --now NetworkManager firewalld chronyd coredns
 
-  # ─────────────────────────────
-  # Reglas firewall
-  # ─────────────────────────────
+  # Firewall
   - firewall-cmd --permanent --add-port=53/tcp
   - firewall-cmd --permanent --add-port=53/udp
   - firewall-cmd --permanent --add-port=80/tcp
