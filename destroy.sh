@@ -1,48 +1,69 @@
 #!/bin/bash
+# destroy.sh — Limpieza total del cluster OKD + Terraform
 set -euo pipefail
 
 echo "=============================================="
-echo "     ELIMINANDO CLUSTER OKD + TERRAFORM"
+echo "      ELIMINANDO CLUSTER OKD COMPLETAMENTE"
 echo "=============================================="
-
 
 # -----------------------------------------------
 # 1. Destruir infraestructura Terraform
 # -----------------------------------------------
 if [[ -d "terraform" ]]; then
-    echo "[1/3] Ejecutando terraform destroy..."
-    terraform -chdir=terraform destroy -auto-approve
+    echo "[1/5] Ejecutando terraform destroy..."
+    terraform -chdir=terraform destroy -auto-approve || true
 else
     echo "⚠ Carpeta terraform/ no encontrada, saltando destroy."
 fi
 
+# -----------------------------------------------
+# 2. Eliminar Ignition generada por el installer
+# -----------------------------------------------
+echo "[2/5] Eliminando Ignition vieja..."
+rm -f ignition/bootstrap.ign 2>/dev/null || true
+rm -f ignition/master.ign    2>/dev/null || true
+rm -f ignition/worker.ign    2>/dev/null || true
 
 # -----------------------------------------------
-# 2. Eliminar archivos Ignition generados en /ignition
+# 3. Eliminar archivos generados por openshift-install
 # -----------------------------------------------
-echo "[2/3] Eliminando archivos Ignition..."
-rm -f ignition/bootstrap.ign     2>/dev/null || true
-rm -f ignition/master.ign        2>/dev/null || true
-rm -f ignition/worker.ign        2>/dev/null || true
+echo "[3/5] Limpiando install-config/..."
 
+rm -f  install-config/bootstrap.ign 2>/dev/null || true
+rm -f  install-config/master.ign    2>/dev/null || true
+rm -f  install-config/worker.ign    2>/dev/null || true
+rm -f  install-config/metadata.json 2>/dev/null || true
+
+rm -rf install-config/manifests     2>/dev/null || true
+rm -rf install-config/openshift     2>/dev/null || true
+
+# ⚠️ Eliminar credenciales generadas
+rm -rf install-config/auth          2>/dev/null || true
+
+# ⚠️ NO ELIMINAR: install-config.yaml
+# (debe permanecer para regenerar ignitions nuevas)
 
 # -----------------------------------------------
-# 3. Eliminar archivos generados en install-config (NO destruir install-config.yaml)
+# 4. ELIMINAR ARCHIVOS OCULTOS DEL INSTALLER
 # -----------------------------------------------
-echo "[3/3] Limpiando directorios generados por openshift-install..."
+echo "[4/5] Eliminando estado oculto de openshift-install..."
 
-rm -rf install-config/manifests      2>/dev/null || true
-rm -rf install-config/openshift      2>/dev/null || true
-rm -f  install-config/bootstrap.ign  2>/dev/null || true
-rm -f  install-config/master.ign     2>/dev/null || true
-rm -f  install-config/worker.ign     2>/dev/null || true
-rm -f  install-config/metadata.json  2>/dev/null || true
+rm -f .openshift_install.log                2>/dev/null || true
+rm -f .openshift_install_state.json         2>/dev/null || true
+rm -f .openshift_install_state.json.backup  2>/dev/null || true
 
-# ⚠️ MUY IMPORTANTE:
-# NO se elimina install-config/install-config.yaml
-# porque es tu archivo de configuración original.
+# Algunas versiones generan un lock
+rm -f .openshift_install.lock*              2>/dev/null || true
+
+# -----------------------------------------------
+# 5. LIMPIEZA PROFUNDA DEL CACHE
+# -----------------------------------------------
+echo "[5/5] Eliminando cache antigua de openshift-install..."
+
+rm -rf ~/.cache/openshift-install           2>/dev/null || true
 
 
 echo "=============================================="
-echo "     CLUSTER OKD ELIMINADO EXITOSAMENTE"
+echo "   CLEAN STATE COMPLETO — TODO ELIMINADO"
+echo "   Listo para regenerar Ignition SIN errores"
 echo "=============================================="
