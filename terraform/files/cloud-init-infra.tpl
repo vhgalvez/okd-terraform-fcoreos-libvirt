@@ -54,7 +54,6 @@ write_files:
       [ipv6]
       method=ignore
 
-
   # ──────────────────────────────────────────────
   # /etc/hosts gestionado por script
   # ──────────────────────────────────────────────
@@ -67,7 +66,6 @@ write_files:
       echo "::1         localhost" >> /etc/hosts
       echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
-
   # ──────────────────────────────────────────────
   # sysctl custom (IP forwarding + bind)
   # ──────────────────────────────────────────────
@@ -77,15 +75,14 @@ write_files:
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
 
-
   # ──────────────────────────────────────────────
   # NetworkManager: no modificar resolv.conf
   # ──────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
+    permissions: "0644"
     content: |
       [main]
       dns=none
-
 
   # ──────────────────────────────────────────────
   # CoreDNS: Corefile
@@ -100,7 +97,6 @@ write_files:
       . {
         forward . 8.8.8.8 1.1.1.1
       }
-
 
   # ──────────────────────────────────────────────
   # CoreDNS: zona DNS interna con LA NUEVA RED 10.56.0.x
@@ -128,7 +124,6 @@ write_files:
 
       *.apps      IN A 10.56.0.13
 
-
   # ──────────────────────────────────────────────
   # CoreDNS service (systemd)
   # ──────────────────────────────────────────────
@@ -148,9 +143,8 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-
   # ──────────────────────────────────────────────
-  # Chrony — NTP corregido a la nueva red
+  # Chrony — NTP apuntando a la nueva red
   # ──────────────────────────────────────────────
   - path: /etc/chrony.conf
     permissions: "0644"
@@ -163,8 +157,7 @@ write_files:
       driftfile /var/lib/chrony/drift
       makestep 1.0 3
       bindcmdaddress 0.0.0.0
-      bindcmdaddress :: 
-
+      bindcmdaddress ::
 
 ###########################################################
 # RUNCMD — BOOT ORDER CORRECTO
@@ -182,7 +175,7 @@ runcmd:
   # Aplicar /etc/hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Reload NetworkManager
+  # Reload NetworkManager y aplicar la conexión estática
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
@@ -194,6 +187,7 @@ runcmd:
   - sysctl --system
 
   # resolvconf → resolv.conf real
+  - mkdir -p /etc/resolvconf/resolv.conf.d
   - echo "nameserver ${dns1}" > /etc/resolvconf/resolv.conf.d/base
   - echo "nameserver ${dns2}" >> /etc/resolvconf/resolv.conf.d/base
   - echo "search okd-lab.${cluster_domain}" >> /etc/resolvconf/resolv.conf.d/base
@@ -206,9 +200,10 @@ runcmd:
   - rm -f /tmp/coredns.tgz
   - chmod +x /usr/local/bin/coredns
 
-  # Servicios
+  # Servicios: enable + restart (más robusto que --now)
   - systemctl daemon-reload
-  - systemctl enable --now NetworkManager firewalld chronyd coredns
+  - systemctl enable NetworkManager firewalld chronyd coredns
+  - systemctl restart NetworkManager firewalld chronyd coredns
 
   # Firewall
   - firewall-cmd --permanent --add-port=53/tcp
