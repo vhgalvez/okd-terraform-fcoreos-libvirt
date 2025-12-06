@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # scripts/uninstall_okd.sh
-
 set -euo pipefail
 
 BIN_DIR="/opt/bin"
+TMP_DIR="/tmp/okd-tools"
 BASHRC="$HOME/.bashrc"
 
 echo "=============================================="
@@ -27,12 +27,12 @@ for bin in oc kubectl openshift-install; do
 done
 
 # ----------------------------------------------
-# 2. Limpiar PATH en .bashrc si contiene /opt/bin
+# 2. Limpiar PATH en .bashrc
 # ----------------------------------------------
 
 echo "[2/5] Limpiando PATH en ~/.bashrc..."
 
-if grep -q "export PATH=/opt/bin" "$BASHRC"; then
+if grep -q "/opt/bin" "$BASHRC"; then
     sed -i '/\/opt\/bin/d' "$BASHRC"
     echo "  ✔ Entrada eliminada de .bashrc"
 else
@@ -40,33 +40,34 @@ else
 fi
 
 # ----------------------------------------------
-# 3. Limpiar logs y estado oculto del installer
+# 3. Eliminar logs y estados del installer
 # ----------------------------------------------
 
-echo "[3/5] Eliminando logs y estado de openshift-install..."
+echo "[3/5] Eliminando logs ocultos..."
 
-rm -f .openshift_install*.log      2>/dev/null || true
+rm -f .openshift_install*.log       2>/dev/null || true
 rm -f .openshift_install_state.json* 2>/dev/null || true
-rm -f .openshift_install.lock*     2>/dev/null || true
+rm -f .openshift_install.lock*      2>/dev/null || true
 
-echo "  ✔ Estado oculto eliminado"
+echo "  ✔ Logs eliminados"
 
 # ----------------------------------------------
-# 4. Limpiar cache global del instalador
+# 4. Eliminar cache de openshift-install
 # ----------------------------------------------
 
-echo "[4/5] Eliminando cache de openshift-install..."
+echo "[4/5] Eliminando cache..."
 
 rm -rf ~/.cache/openshift-install 2>/dev/null || true
 echo "  ✔ Cache eliminada"
 
 # ----------------------------------------------
-# 5. Limpieza final opcional (no destruye cluster)
+# 5. ELIMINAR SOLO /tmp/okd-tools (tu requerimiento)
 # ----------------------------------------------
 
-echo "[5/5] Limpieza completa."
+echo "[5/5] Eliminando carpeta temporal ${TMP_DIR}..."
+sudo rm -rf "$TMP_DIR"
+echo "  ✔ Carpeta temporal eliminada"
 
 echo "=============================================="
-echo "   OKD DESINSTALADO DEL HOST."
-echo "   Puedes reinstalar con ./install_okd_tools.sh"
+echo "   OKD DESINSTALADO COMPLETAMENTE."
 echo "=============================================="
