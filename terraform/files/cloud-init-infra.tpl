@@ -93,7 +93,6 @@ write_files:
       okd-lab.${cluster_domain} {
         file /etc/coredns/db.okd
       }
-
       . {
         forward . 8.8.8.8 1.1.1.1
       }
@@ -143,7 +142,7 @@ write_files:
       WantedBy=multi-user.target
 
   #────────────────────────────────────────────────────────
-  # HAProxy — configuración correcta para OKD
+  # HAProxy — configuración correcta
   #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
@@ -160,7 +159,6 @@ write_files:
         timeout client 30s
         timeout server 30s
 
-      # API SERVER 6443
       frontend api
         bind 0.0.0.0:6443
         default_backend api_nodes
@@ -171,7 +169,6 @@ write_files:
         server bootstrap 10.56.0.11:6443 check fall 3 rise 2
         server master    10.56.0.12:6443 check fall 3 rise 2
 
-      # MCS 22623
       frontend mcs
         bind 0.0.0.0:22623
         default_backend mcs_nodes
@@ -180,7 +177,6 @@ write_files:
         balance roundrobin
         server bootstrap 10.56.0.11:22623 check fall 3 rise 2
 
-      # INGRESS ROUTER
       frontend ingress80
         bind 0.0.0.0:80
         default_backend worker_ingress
@@ -195,7 +191,7 @@ write_files:
         server worker443 10.56.0.13:443 check
 
   #────────────────────────────────────────────────────────
-  # Chrony — NTP OKD
+  # Chrony — NTP
   #────────────────────────────────────────────────────────
   - path: /etc/chrony.conf
     permissions: "0644"
@@ -224,34 +220,42 @@ runcmd:
   # Hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Recargar red
+  # Red
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
-  # Instalar paquetes necesarios (SIN resolvconf para evitar romper dnf)
-  - dnf install -y firewalld chrony curl tar bind-utils haproxy
+  # Paquetes necesarios
+  - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
   # sysctl
   - sysctl --system
 
-  # resolv.conf fijo (sin resolvconf)
+  # resolv.conf estático
   - rm -f /etc/resolv.conf
   - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch okd-lab.${cluster_domain}\n" > /etc/resolv.conf
 
-  # Descargar CoreDNS binario real
+  # CoreDNS
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - chmod +x /usr/local/bin/coredns
   - rm -f /tmp/coredns.tgz
 
+  #────────────────────────────────────────────────────────
+  # 🔥 SELinux FIX PARA HAProxy (puertos <1024 + bind)
+  #────────────────────────────────────────────────────────
+  - setsebool -P haproxy_connect_any 1
+  - setsebool -P httpd_can_network_connect 1
+  - semanage port -a -t http_port_t -p tcp 6443 || true
+  - semanage port -a -t http_port_t -p tcp 22623 || true
+
   # Servicios
   - systemctl daemon-reload
   - systemctl enable NetworkManager firewalld chronyd coredns haproxy
   - systemctl restart NetworkManager firewalld chronyd coredns haproxy
 
-  # Firewall completo
+  # Firewall OKD
   - firewall-cmd --permanent --add-port=53/tcp
   - firewall-cmd --permanent --add-port=53/udp
   - firewall-cmd --permanent --add-port=80/tcp
