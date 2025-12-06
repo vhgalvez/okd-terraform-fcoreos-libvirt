@@ -1,117 +1,144 @@
-# 🟦 📘 Dominios oficiales del clúster OKD
+# ✅ Dominios completos del clúster OKD
 
-**(baseDomain = okd.local, clusterName = okd)**
+**baseDomain = okd.local, name = okd**
 
-Tu instalación genera automáticamente el dominio:
-
-```
-<name>.<baseDomain> = okd.okd.local
-```
-
-Por tanto, el dominio raíz del clúster es:
-
+Cluster FQDN:  
 ```
 okd.okd.local
 ```
 
+Esto viene de:
+
+```yaml
+name: okd
+baseDomain: okd.local
+```
+
+Por tanto, toda la infraestructura debe usar `okd.okd.local` como zona DNS interna.
+
 ---
 
-## 🟥 1. Dominios de la API del clúster
+## 🟥 1. FQDN principales del API
 
 - **api.okd.okd.local**
-  - **Función:** Punto de entrada principal para:
-    - `oc login`
-    - Kubernetes API Server (port 6443)
-    - Comunicación del bootstrap/master hacia el API server
-    - kubeconfig del clúster
-  - **Resuelto en tu homelab a:**
-    - 10.56.0.11 (bootstrap) durante instalación
-    - 10.56.0.12 (master) después
+  - Endpoint externo de Kubernetes API.
+  - Usado por: `oc login`, kubeconfig, accesos externos, workers → API server
+  - IP:
+    - Durante bootstrap → 10.56.0.11
+    - Luego del pivot → 10.56.0.12
 
 - **api-int.okd.okd.local**
-  - **Función:** API interna, usada por:
-    - kube-apiserver del master hacia sí mismo
-    - kubelets
-    - control plane interno
-  - **Resuelto igual que el API externo:**
-    - 10.56.0.11 bootstrap
-    - 10.56.0.12 master
+  - API interna.
+  - Usado por: kubelets, control-plane, servicios internos
+  - IP:
+    - 10.56.0.11 (bootstrap)
+    - 10.56.0.12 (master)
+
+> Ambas deben apuntar SIEMPRE al HAProxy (infra).
 
 ---
 
 ## 🟧 2. Dominio de aplicaciones
 
 - **\*.apps.okd.okd.local**
-  - **Función:** Wildcard necesario para todas las rutas del Ingress de OpenShift:
-    - Ejemplos:
-      - console-openshift-console.apps.okd.okd.local
-      - oauth-openshift.apps.okd.okd.local
-      - grafana-openshift-monitoring.apps.okd.okd.local
-      - alertmanager-main-openshift-monitoring.apps.okd.okd.local
-  - **Resuelto a:** 10.56.0.13 (worker con ingress)
+  - Wildcard obligatorio.
+  - Ejemplos:
+    - console-openshift-console.apps.okd.okd.local
+    - oauth-openshift.apps.okd.okd.local
+    - grafana-openshift-monitoring.apps.okd.okd.local
+    - alertmanager-main-openshift-monitoring.apps.okd.okd.local
+  - Resuelve al worker con Ingress → 10.56.0.13
 
 ---
 
-## 🟩 3. Dominios internos del bootstrap y nodos
+## 🟩 3. Dominios internos de nodos (Ignition + certificados)
 
-- **bootstrap.okd.okd.local**
-- **master.okd.okd.local**
-- **worker.okd.okd.local**
+| Nodo      | FQDN                    | IP          |
+|-----------|-------------------------|-------------|
+| Bootstrap | bootstrap.okd.okd.local | 10.56.0.11  |
+| Master    | master.okd.okd.local    | 10.56.0.12  |
+| Worker    | worker.okd.okd.local    | 10.56.0.13  |
 
-  - **Función:** DNS A records requeridos para:
-    - Ignition de másters (master.ign)
-    - kubelet bootstrap
-    - certificados del cluster
-    - planeamiento de red interna
-  - **Resueltos a:**
-    - bootstrap → 10.56.0.11  
-    - master    → 10.56.0.12  
-    - worker    → 10.56.0.13  
+Estos FQDN deben estar en la zona DNS interna (CoreDNS).
 
 ---
 
-## 🟦 4. Dominio DNS interno gestionado por CoreDNS
+## 🟦 4. Dominio DNS interno gestionado por la VM infra
 
-- **dns.okd.okd.local**
-  - **Función:** Servidor DNS interno del cluster:
-    - Resuelve api/api-int
-    - Resuelve bootstrap/master/worker
-    - Zona interna para OKD
-    - Forwarding hacia internet
-  - Este es el CoreDNS que configuramos en la VM infra:
-    - infra.okd.local → 10.56.0.10
-
----
-
-## 📘 LISTA COMPLETA EN TABLA PARA DOCUMENTACIÓN
-
-| Dominio/FQDN                | Descripción                                   | IP destino       |
-|-----------------------------|-----------------------------------------------|------------------|
-| okd.okd.local               | Dominio raíz del clúster                      | —                |
-| api.okd.okd.local           | API Server externa (oc login)                 | 10.56.0.11/12    |
-| api-int.okd.okd.local       | API Server interna (kubelets, control plane)  | 10.56.0.11/12    |
-| *.apps.okd.okd.local        | Wildcard para aplicaciones e Ingress          | 10.56.0.13       |
-| bootstrap.okd.okd.local     | Nodo bootstrap                                | 10.56.0.11       |
-| master.okd.okd.local        | Máster                                        | 10.56.0.12       |
-| worker.okd.okd.local        | Worker                                        | 10.56.0.13       |
-| dns.okd.okd.local           | Servidor CoreDNS interno                      | 10.56.0.10       |
-
----
-
-## 📌 ¿Dónde se usan estos dominios?
-
-- En `install-config.yaml`
-  ```
-  baseDomain: okd.local
-  name: okd
-  ```
-- En CoreDNS (`db.okd`)
+- CoreDNS corre en infra → 10.56.0.10
+- FQDN interno del servidor DNS:
+  - dns.okd.okd.local → 10.56.0.10
+- La zona:
   ```
   $ORIGIN okd.okd.local.
   ```
-- En HAProxy
-  - api / mcs / ingress
-- En terraform → `cloud-init-infra.tpl`
-  ```
-  dns-search=okd.okd.local
-  ```
+
+---
+
+## 📘 Tabla final — Todos los FQDN del clúster
+
+| FQDN / Dominio               | Función                | IP destino      |
+|------------------------------|------------------------|-----------------|
+| okd.okd.local                | Zona DNS raíz          | —               |
+| api.okd.okd.local            | API externa            | 10.56.0.11/12   |
+| api-int.okd.okd.local        | API interna            | 10.56.0.11/12   |
+| *.apps.okd.okd.local         | Rutas/Ingress          | 10.56.0.13      |
+| bootstrap.okd.okd.local      | Bootstrap Ignition     | 10.56.0.11      |
+| master.okd.okd.local         | Nodo control-plane     | 10.56.0.12      |
+| worker.okd.okd.local         | Nodo worker            | 10.56.0.13      |
+| dns.okd.okd.local            | CoreDNS interno        | 10.56.0.10      |
+
+---
+
+## 📌 Dónde deben ir estos dominios exactamente
+
+### 1. `install-config.yaml`
+
+Ya está correcto:
+
+```yaml
+baseDomain: okd.local
+name: okd
+```
+
+No tienes que añadir nada más.
+
+### 2. CoreDNS (`db.okd`)
+
+Debe quedar EXACTO así:
+
+```
+$ORIGIN okd.okd.local.
+@       IN SOA dns.okd.okd.local. admin.okd.okd.local. (
+            2025010101 7200 3600 1209600 3600 )
+@       IN NS dns.okd.okd.local.
+dns     IN A 10.56.0.10
+
+api         IN A 10.56.0.11
+api-int     IN A 10.56.0.11
+
+bootstrap   IN A 10.56.0.11
+master      IN A 10.56.0.12
+worker      IN A 10.56.0.13
+
+*.apps      IN A 10.56.0.13
+```
+
+Después del bootstrap, puedes cambiar:  
+api / api-int → 10.56.0.12
+
+### 3. `cloud-init-infra.tpl`
+
+Agregar:
+
+```
+dns-search=okd.okd.local
+```
+
+### 4. HAProxy
+
+Debe reenviar:
+
+- 6443 → api.okd.okd.local → 10.56.0.11/12
+- 22623 → mcs → bootstrap 10.56.0.11
+- 80/443 → *.apps.okd.okd.local → worker (10.56.0.13)
