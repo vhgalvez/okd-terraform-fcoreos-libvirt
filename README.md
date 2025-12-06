@@ -450,3 +450,8 @@ okd-terraform-fcoreos-libvirt/
 │   └── uninstall_okd.sh
 └── terraform/
     └── ...                  # main.tf, vm-coreos.tf, terraform.tfvars, etc.
+
+
+
+
+journalctl -b -f -u bootkube.service
