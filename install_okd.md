@@ -108,4 +108,12 @@ sudo rm -f /opt/bin/openshift-install
 sed -i '/\/opt\/bin/d' ~/.bashrc
 ```
 
+
+O usando el script de desinstalación:
+
+```bash
+sudo ./uninstall_okd.sh
+```
+
+
 Esto elimina los binarios y limpia el PATH.

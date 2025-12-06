@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ----------------------------------------
-#  Deploy de OKD usando Terraform + Ignition
-# ----------------------------------------
-
 INSTALL_DIR="install-config"
 IGNITION_DIR="ignition"
 TERRAFORM_DIR="terraform"
@@ -14,85 +10,67 @@ echo "=============================================="
 echo "  DEPLOY AUTOMÁTICO DE OKD 4.x"
 echo "=============================================="
 
-# --- Validaciones previas ---
+# ----------------------------------------
+# Validaciones previas
+# ----------------------------------------
 
 if [[ ! -x "$OPENSHIFT_INSTALL_BIN" ]]; then
-    echo "❌ ERROR: openshift-install no está en /opt/bin o no es ejecutable."
-    echo "   Ejecuta antes: ./install_okd_tools.sh"
+    echo "❌ ERROR: openshift-install no está en /opt/bin"
     exit 1
 fi
 
-if [[ ! -d "$INSTALL_DIR" ]]; then
-    echo "❌ ERROR: No existe la carpeta $INSTALL_DIR/ con install-config.yaml"
-    echo "   Debes ejecutar: openshift-install create install-config --dir=$INSTALL_DIR"
+if [[ ! -f "${INSTALL_DIR}/install-config.yaml" ]]; then
+    echo "❌ ERROR: Falta ${INSTALL_DIR}/install-config.yaml"
     exit 1
 fi
 
+mkdir -p "$IGNITION_DIR"
 
 # ----------------------------------------
 # 1. Generar Ignition
 # ----------------------------------------
+
 echo "[1/5] Generando Ignition..."
-
-$OPENSHIFT_INSTALL_BIN create ignition-configs --dir="$INSTALL_DIR"
-
-echo "✔ Ignition generado correctamente."
-
+"$OPENSHIFT_INSTALL_BIN" create ignition-configs --dir="$INSTALL_DIR"
+echo "✔ Ignition generado."
 
 # ----------------------------------------
-# 2. Copiar Ignition a carpeta /ignition
+# 2. Copiar Ignition
 # ----------------------------------------
-echo "[2/5] Copiando archivos .ign a $IGNITION_DIR/"
 
-mkdir -p "$IGNITION_DIR"
-
-shopt -s nullglob
-IGN_FILES=("$INSTALL_DIR"/*.ign)
-
-if (( ${#IGN_FILES[@]} == 0 )); then
-    echo "❌ ERROR: No se generaron archivos .ign"
-    exit 1
-fi
-
+echo "[2/5] Copiando ignitions a ${IGNITION_DIR}/..."
 cp "$INSTALL_DIR"/*.ign "$IGNITION_DIR"/
-echo "✔ Archivos copiados a $IGNITION_DIR/"
-
+echo "✔ Ignitions copiadas."
 
 # ----------------------------------------
 # 3. Terraform apply
 # ----------------------------------------
-echo "[3/5] Ejecutando Terraform..."
 
-if [[ ! -d "$TERRAFORM_DIR" ]]; then
-    echo "❌ ERROR: La carpeta terraform/ no existe."
-    exit 1
-fi
+echo "[3/5] Ejecutando Terraform..."
 
 terraform -chdir="$TERRAFORM_DIR" init -input=false
 
-# ⬅ CORRECCIÓN CRÍTICA: LEER terraform.tfvars
-terraform -chdir="$TERRAFORM_DIR" apply \
-    -auto-approve \
-    -input=false \
-    -var-file="terraform.tfvars"
+TFVARS=()
+if [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]]; then
+    TFVARS+=( -var-file="terraform.tfvars" )
+fi
 
-echo "✔ Terraform aplicado correctamente."
+terraform -chdir="$TERRAFORM_DIR" apply -auto-approve -input=false "${TFVARS[@]}"
 
-
-# ----------------------------------------
-# 4. Mostrar IPs del cluster
-# ----------------------------------------
-echo "[4/5] Mostrando outputs de Terraform:"
-
-terraform -chdir="$TERRAFORM_DIR" output || echo "⚠ No hay outputs disponibles."
-
+echo "✔ Terraform completado."
 
 # ----------------------------------------
-# 5. Deploy finalizado
+# 4. Outputs
 # ----------------------------------------
-echo "[5/5] Instalación completada exitosamente."
+
+echo "[4/5] Outputs del cluster:"
+terraform -chdir="$TERRAFORM_DIR" output || true
+
+# ----------------------------------------
+# 5. Final
+# ----------------------------------------
+
 echo "=============================================="
-echo "Cluster desplegado. Ejecuta:"
-echo "   terraform -chdir=terraform output"
-echo "para ver las IPs nuevamente."
+echo "  Deploy completado con éxito"
+echo "  Usa: terraform -chdir=terraform output"
 echo "=============================================="
