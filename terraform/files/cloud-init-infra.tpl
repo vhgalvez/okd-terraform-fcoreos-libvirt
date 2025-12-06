@@ -61,12 +61,13 @@ write_files:
     permissions: "0755"
     content: |
       #!/bin/bash
+      SHORT=$(echo "${hostname}" | cut -d'.' -f1)
       echo "127.0.0.1   localhost" > /etc/hosts
       echo "::1         localhost" >> /etc/hosts
-      echo "${ip}  ${hostname} ${short_hostname}" >> /etc/hosts
+      echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
   #────────────────────────────────────────────────────────
-  # sysctl — requerido para HAProxy/API OKD
+  # sysctl — requerido para DNS + API
   #────────────────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
@@ -75,7 +76,7 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
 
   #────────────────────────────────────────────────────────
-  # No tocar resolv.conf (DNS manual)
+  # NetworkManager — no tocar resolv.conf
   #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
@@ -92,30 +93,28 @@ write_files:
       okd-lab.${cluster_domain} {
         file /etc/coredns/db.okd
       }
-
       . {
         forward . 8.8.8.8 1.1.1.1
       }
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — Zona DNS OKD
+  # CoreDNS — Zona DNS interna OKD
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
       $ORIGIN okd-lab.${cluster_domain}.
-      @ IN SOA dns.okd-lab.${cluster_domain}. admin.okd-lab.${cluster_domain}. (
-          2025010101
-          7200
-          3600
-          1209600
-          3600 )
-
+      @   IN  SOA dns.okd-lab.${cluster_domain}. admin.okd-lab.${cluster_domain}. (
+              2025010101
+              7200
+              3600
+              1209600
+              3600 )
       @       IN NS dns.okd-lab.${cluster_domain}.
       dns     IN A ${ip}
 
-      api         IN A ${ip}
-      api-int     IN A ${ip}
+      api         IN A 10.56.0.11
+      api-int     IN A 10.56.0.11
 
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
@@ -124,7 +123,7 @@ write_files:
       *.apps      IN A 10.56.0.13
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — servicio systemd
+  # CoreDNS — systemd service
   #────────────────────────────────────────────────────────
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
@@ -143,7 +142,7 @@ write_files:
       WantedBy=multi-user.target
 
   #────────────────────────────────────────────────────────
-  # HAProxy — Load Balancer OKD
+  # HAProxy — configuración correcta para OKD
   #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
@@ -162,7 +161,7 @@ write_files:
 
       # API SERVER 6443
       frontend api
-        bind *:6443
+        bind 0.0.0.0:6443
         default_backend api_nodes
 
       backend api_nodes
@@ -173,20 +172,20 @@ write_files:
 
       # MCS 22623
       frontend mcs
-        bind *:22623
+        bind 0.0.0.0:22623
         default_backend mcs_nodes
 
       backend mcs_nodes
         balance roundrobin
         server bootstrap 10.56.0.11:22623 check fall 3 rise 2
 
-      # INGRESS
+      # INGRESS ROUTER
       frontend ingress80
-        bind *:80
+        bind 0.0.0.0:80
         default_backend worker_ingress
 
       frontend ingress443
-        bind *:443
+        bind 0.0.0.0:443
         default_backend worker_ingress
 
       backend worker_ingress
@@ -195,7 +194,7 @@ write_files:
         server worker443 10.56.0.13:443 check
 
   #────────────────────────────────────────────────────────
-  # Chrony — NTP
+  # Chrony — NTP OKD
   #────────────────────────────────────────────────────────
   - path: /etc/chrony.conf
     permissions: "0644"
@@ -204,40 +203,57 @@ write_files:
       allow 10.56.0.0/24
       driftfile /var/lib/chrony/drift
       makestep 1.0 3
+      server 0.pool.ntp.org iburst
+      server 1.pool.ntp.org iburst
+      server 2.pool.ntp.org iburst
 
 ###########################################################
 # RUNCMD
 ###########################################################
 
 runcmd:
-  # Asegurar directorios necesarios
-  - mkdir -p /etc/coredns
-  - mkdir -p /etc/haproxy/conf.d
 
-  # Instalar CoreDNS binario
-  - curl -Lo /usr/local/bin/coredns https://github.com/coredns/coredns/releases/download/v1.11.1/coredns_1.11.1_linux_amd64
-  - chmod +x /usr/local/bin/coredns
+  # Swap
+  - fallocate -l 2G /swapfile
+  - chmod 600 /swapfile
+  - mkswap /swapfile
+  - swapon /swapfile
+  - echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
-  # /etc/hosts
+  # Hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Red
+  # Recargar red
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
-  # Paquetes base
-  - dnf install -y firewalld chrony curl tar bind-utils haproxy
+  # Instalar paquetes necesarios
+  - dnf install -y firewalld resolvconf chrony curl tar bind-utils haproxy
 
   # sysctl
   - sysctl --system
 
+  # resolv.conf permanente
+  - mkdir -p /etc/resolvconf/resolv.conf.d
+  - echo "nameserver ${dns1}" > /etc/resolvconf/resolv.conf.d/base
+  - echo "nameserver ${dns2}" >> /etc/resolvconf/resolv.conf.d/base
+  - echo "search okd-lab.${cluster_domain}" >> /etc/resolvconf/resolv.conf.d/base
+  - resolvconf -u
+
+  # Descargar CoreDNS binario real
+  - mkdir -p /etc/coredns
+  - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
+  - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
+  - chmod +x /usr/local/bin/coredns
+  - rm -f /tmp/coredns.tgz
+
   # Servicios
   - systemctl daemon-reload
-  - systemctl enable firewalld chronyd haproxy coredns
-  - systemctl restart firewalld chronyd haproxy coredns
+  - systemctl enable NetworkManager firewalld chronyd coredns haproxy
+  - systemctl restart NetworkManager firewalld chronyd coredns haproxy
 
-  # Firewall required
+  # Firewall completo
   - firewall-cmd --permanent --add-port=53/tcp
   - firewall-cmd --permanent --add-port=53/udp
   - firewall-cmd --permanent --add-port=80/tcp
