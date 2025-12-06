@@ -1,9 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# destroy.sh — Limpieza total del cluster OKD + Terraform
+# scripts/destroy.sh
 set -euo pipefail
 
-GENERATED_DIR="generated"
+# Obtener la ruta absoluta del script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Ir al directorio raíz del proyecto
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
+
+GENERATED_DIR="${PROJECT_ROOT}/generated"
+TERRAFORM_DIR="${PROJECT_ROOT}/terraform"
 
 echo "=============================================="
 echo "      ELIMINANDO CLUSTER OKD COMPLETAMENTE"
@@ -12,30 +20,34 @@ echo "=============================================="
 # -----------------------------------------------
 # 1. Destruir infraestructura Terraform
 # -----------------------------------------------
-if [[ -d "terraform" ]]; then
+if [[ -d "$TERRAFORM_DIR" ]]; then
     echo "[1/3] Ejecutando terraform destroy..."
-    terraform -chdir=terraform destroy -auto-approve || true
+    terraform -chdir="$TERRAFORM_DIR" destroy -auto-approve || true
 else
     echo "⚠ Carpeta terraform/ no encontrada, saltando destroy."
 fi
 
 # -----------------------------------------------
-# 2. Eliminar directorio generated completo
+# 2. Limpiar carpeta generated/
 # -----------------------------------------------
 echo "[2/3] Eliminando archivos generados..."
-rm -rf "${GENERATED_DIR:?}/"* 2>/dev/null || true
-echo "✔ Carpeta generated/ limpiada."
+
+if [[ -d "$GENERATED_DIR" ]]; then
+    rm -rf "${GENERATED_DIR:?}/"* 2>/dev/null || true
+    echo "✔ Carpeta generated/ limpiada."
+else
+    echo "⚠ Carpeta generated/ no existe, nada que limpiar."
+fi
 
 # -----------------------------------------------
 # 3. Eliminar archivos ocultos del installer
 # -----------------------------------------------
 echo "[3/3] Eliminando estado interno de openshift-install..."
 
-rm -f .openshift_install.log                2>/dev/null || true
-rm -f .openshift_install_state.json         2>/dev/null || true
-rm -f .openshift_install_state.json.backup  2>/dev/null || true
-rm -f .openshift_install.lock*              2>/dev/null || true
-rm -rf ~/.cache/openshift-install           2>/dev/null || true
+rm -f "${PROJECT_ROOT}"/.openshift_install.log*      2>/dev/null || true
+rm -f "${PROJECT_ROOT}"/.openshift_install_state.json* 2>/dev/null || true
+rm -f "${PROJECT_ROOT}"/.openshift_install.lock*     2>/dev/null || true
+rm -rf ~/.cache/openshift-install                    2>/dev/null || true
 
 echo "=============================================="
 echo "   CLEAN STATE COMPLETO — TODO ELIMINADO"

@@ -3,10 +3,17 @@
 # scripts/deploy.sh
 set -euo pipefail
 
-INSTALL_DIR="install-config"
-GENERATED_DIR="generated"
+# Obtener la ruta absoluta del directorio scripts/
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Moverse al directorio raíz del proyecto
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
+
+INSTALL_DIR="${PROJECT_ROOT}/install-config"
+GENERATED_DIR="${PROJECT_ROOT}/generated"
 IGNITION_DIR="${GENERATED_DIR}/ignition"
-TERRAFORM_DIR="terraform"
+TERRAFORM_DIR="${PROJECT_ROOT}/terraform"
 OPENSHIFT_INSTALL_BIN="/opt/bin/openshift-install"
 
 echo "=============================================="
@@ -24,6 +31,7 @@ fi
 
 if [[ ! -f "${INSTALL_DIR}/install-config.yaml" ]]; then
     echo "❌ ERROR: No existe ${INSTALL_DIR}/install-config.yaml"
+    echo "Ruta buscada: ${INSTALL_DIR}/install-config.yaml"
     exit 1
 fi
 
