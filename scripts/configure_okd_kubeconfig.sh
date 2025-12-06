@@ -1,36 +1,53 @@
 #!/usr/bin/env bash
 
-# scripts/configure_okd_kubeconfig.sh
+#scripts\configure_okd_kubeconfig.sh 
+
 set -euo pipefail
 
 echo "==============================================="
 echo "  Configurando kubeconfig para OKD"
-echo "===============================================""
+echo "==============================================="
 
 KCFG="$HOME/.kube/config"
 OKD_SOURCE="generated/auth/kubeconfig"
 
 # --------------------------------------------------------------------
-# 1) Asegurar que root tiene /opt/bin en el PATH
+# 1) Asegurar PATH global para OKD (/opt/bin)
 # --------------------------------------------------------------------
-echo "[+] Asegurando que /opt/bin está en el PATH de root..."
+echo "[+] Asegurando que /opt/bin está en el PATH del sistema..."
 
-if ! sudo grep -q "/opt/bin" /root/.bashrc 2>/dev/null; then
-    sudo bash -c 'echo "export PATH=/opt/bin:\$PATH" >> /root/.bashrc'
-    echo "[+] /opt/bin añadido al PATH de root"
+if [ ! -f /etc/profile.d/okd-path.sh ]; then
+    sudo bash -c 'echo "export PATH=/opt/bin:\$PATH" > /etc/profile.d/okd-path.sh'
+    sudo chmod +x /etc/profile.d/okd-path.sh
+    echo "[+] Creado /etc/profile.d/okd-path.sh"
 else
-    echo "[+] /opt/bin ya estaba configurado en el PATH de root"
+    echo "[+] /etc/profile.d/okd-path.sh ya existe"
 fi
 
-export PATH="/opt/bin:$PATH"  # Cargar PATH actualizado para esta sesión
+# Usar PATH actualizado ya en este script
+export PATH="/opt/bin:$PATH"
 
 # --------------------------------------------------------------------
-# 2) Configurar kubeconfig
+# 2) Crear enlaces simbólicos en /usr/local/bin
+# --------------------------------------------------------------------
+echo
+echo "[+] Creando enlaces simbólicos en /usr/local/bin..."
+
+for bin in openshift-install oc kubectl; do
+    if [ -f "/opt/bin/$bin" ]; then
+        sudo ln -sf "/opt/bin/$bin" "/usr/local/bin/$bin"
+        echo "   → /usr/local/bin/$bin enlazado"
+    else
+        echo "   ⚠ No existe /opt/bin/$bin (¿Instalado correctamente?)"
+    fi
+done
+
+# --------------------------------------------------------------------
+# 3) Configurar kubeconfig
 # --------------------------------------------------------------------
 echo
 echo "[+] Configurando kubeconfig..."
 
-# Eliminar kubeconfig previo
 if [ -f "$KCFG" ]; then
     echo "[+] Eliminando kubeconfig previo en: $KCFG"
     rm -f "$KCFG"
@@ -44,19 +61,19 @@ if [ -f "$OKD_SOURCE" ]; then
     chmod 600 "$KCFG"
 else
     echo "❌ ERROR: No se encontró kubeconfig en: $OKD_SOURCE"
-    echo "    Asegúrate de haber ejecutado deploy.sh y que OKD generó auth/kubeconfig"
+    echo "    Ejecuta deploy.sh antes."
     exit 1
 fi
 
 echo "✔ kubeconfig configurado correctamente."
 
 # --------------------------------------------------------------------
-# 3) Verificación de oc y conexión al cluster
+# 4) Verificación
 # --------------------------------------------------------------------
 echo
 echo "==============================================="
 echo "  Verificando herramientas de OKD"
-echo "===============================================""
+echo "==============================================="
 
 echo -n "[*] Verificando oc en el PATH... "
 if command -v oc >/dev/null 2>&1; then
