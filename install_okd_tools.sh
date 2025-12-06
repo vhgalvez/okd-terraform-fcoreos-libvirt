@@ -5,12 +5,14 @@ echo "==============================================="
 echo "  Instalador de herramientas OKD / OpenShift"
 echo "==============================================="
 
-# --- CONFIG ---
-OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.12.0-0.okd-2023-01-21-042244/openshift-client-linux-4.12.0-0.okd-2023-01-21-042244.tar.gz"
-OKD_CLIENT_SHA256="c4dc1095c7e4d0e323d263e662f839d21f63d3e0282c35cddb1f2a802908896f"
 
-OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.12.0-0.okd-2023-01-21-042244/openshift-install-linux-4.12.0-0.okd-2023-01-21-042244.tar.gz"
-OKD_INSTALLER_SHA256="cc1ed09f796d5fc5bebae30a3f1c3e039c6229c1de4a12dfea59c7ea93a7e8a3"
+# --- CONFIG ---
+
+OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.12.0-0.okd-2023-03-17-044529/openshift-client-linux-4.12.0-0.okd-2023-03-17-044529.tar.gz"
+OKD_CLIENT_SHA256="a619f26c59f9ce733c1d1bf4a71a3e02aa527969b5cb364a7e06e5e853ee1bc9"
+
+OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.12.0-0.okd-2023-03-17-044529/openshift-install-linux-4.12.0-0.okd-2023-03-17-044529.tar.gz"
+OKD_INSTALLER_SHA256="1db5b1cd87b98099d911728df7165e5e6fba6dd0501592cd57ef2b9a70cc8f82"
 
 BIN_DIR="/opt/bin"
 TMP_CLIENT="/tmp/okd-client"
