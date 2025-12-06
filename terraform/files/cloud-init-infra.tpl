@@ -9,7 +9,8 @@ users:
   - default
 
   - name: root
-    ssh_authorized_keys: ${ssh_keys}
+    ssh_authorized_keys: 
+      ${ssh_keys}
 
   - name: core
     gecos: "Core User"
@@ -17,7 +18,8 @@ users:
     groups: [wheel]
     shell: /bin/bash
     lock_passwd: false
-    ssh_authorized_keys: ${ssh_keys}
+    ssh_authorized_keys: 
+      ${ssh_keys}
 
 growpart:
   mode: auto
@@ -66,7 +68,7 @@ write_files:
       echo "${ip}  ${hostname} ${short_hostname}" >> /etc/hosts
 
   #────────────────────────────────────────────────────────
-  # sysctl — soporte para LB
+  # sysctl — requerido para HAProxy/API OKD
   #────────────────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
@@ -75,7 +77,7 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
 
   #────────────────────────────────────────────────────────
-  # NetworkManager — no tocar resolv.conf
+  # No tocar resolv.conf (DNS manual)
   #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
@@ -114,8 +116,8 @@ write_files:
       @       IN NS dns.okd-lab.${cluster_domain}.
       dns     IN A ${ip}
 
-      api         IN A 10.56.0.10
-      api-int     IN A 10.56.0.10
+      api         IN A ${ip}
+      api-int     IN A ${ip}
 
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
@@ -160,6 +162,7 @@ write_files:
         timeout client 30s
         timeout server 30s
 
+      # API SERVER 6443
       frontend api
         bind *:6443
         default_backend api_nodes
@@ -170,6 +173,7 @@ write_files:
         server bootstrap 10.56.0.11:6443 check fall 3 rise 2
         server master    10.56.0.12:6443 check fall 3 rise 2
 
+      # MCS 22623
       frontend mcs
         bind *:22623
         default_backend mcs_nodes
@@ -178,6 +182,7 @@ write_files:
         balance roundrobin
         server bootstrap 10.56.0.11:22623 check fall 3 rise 2
 
+      # INGRESS
       frontend ingress80
         bind *:80
         default_backend worker_ingress
@@ -204,21 +209,32 @@ write_files:
 
 
 ###########################################################
-# RUNCMD — ORDEN DE BOOT
+# RUNCMD
 ###########################################################
 
 runcmd:
+  - mkdir -p /etc/coredns
   - /usr/local/bin/set-hosts.sh
 
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
-  - dnf install -y firewalld resolvconf chrony curl tar bind-utils haproxy
+  - dnf install -y firewalld chrony curl tar bind-utils haproxy
 
   - sysctl --system
 
+  - systemctl daemon-reload
   - systemctl enable firewalld chronyd haproxy
   - systemctl restart firewalld chronyd haproxy
+
+  # Firewall required
+  - firewall-cmd --permanent --add-port=53/tcp
+  - firewall-cmd --permanent --add-port=53/udp
+  - firewall-cmd --permanent --add-port=80/tcp
+  - firewall-cmd --permanent --add-port=443/tcp
+  - firewall-cmd --permanent --add-port=6443/tcp
+  - firewall-cmd --permanent --add-port=22623/tcp
+  - firewall-cmd --reload
 
 timezone: ${timezone}
