@@ -7,12 +7,11 @@ echo "==============================================="
 
 
 # --- CONFIG ---
+OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.13.0-0.okd-2023-10-28-065448/openshift-client-linux-4.13.0-0.okd-2023-10-28-065448.tar.gz"
+OKD_CLIENT_SHA256="3ef39e048cda1ab4f27c67f5999ea11ebad84811b01a8e473d440cf96e19991a"
 
-OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.12.0-0.okd-2023-03-17-044529/openshift-client-linux-4.12.0-0.okd-2023-03-17-044529.tar.gz"
-OKD_CLIENT_SHA256="a619f26c59f9ce733c1d1bf4a71a3e02aa527969b5cb364a7e06e5e853ee1bc9"
-
-OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.12.0-0.okd-2023-03-17-044529/openshift-install-linux-4.12.0-0.okd-2023-03-17-044529.tar.gz"
-OKD_INSTALLER_SHA256="1db5b1cd87b98099d911728df7165e5e6fba6dd0501592cd57ef2b9a70cc8f82"
+OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.13.0-0.okd-2023-10-28-065448/openshift-install-linux-4.13.0-0.okd-2023-10-28-065448.tar.gz"
+OKD_INSTALLER_SHA256="0cd103ebe22cc3e9ec2e7da302843074350a4af12422d0fb8f76a06d1f43fae9"
 
 BIN_DIR="/opt/bin"
 TMP_CLIENT="/tmp/okd-client"
