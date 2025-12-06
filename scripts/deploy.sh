@@ -36,16 +36,16 @@ mkdir -p "${IGNITION_DIR}"
 # ----------------------------------------------------
 # 1. Copiar install-config.yaml a generated/
 # ----------------------------------------------------
-echo "[0/4] Preparando entorno..."
+echo "[0/5] Preparando entorno..."
 
 cp -f "${INSTALL_DIR}/install-config.yaml" "${GENERATED_DIR}/install-config.yaml"
 
 echo "✔ install-config.yaml copiado a generated/"
 
 # ----------------------------------------------------
-# 2. Generar Ignition
+# 2. Generar Ignition + auth/
 # ----------------------------------------------------
-echo "[1/4] Generando Ignition en ${GENERATED_DIR}/..."
+echo "[1/5] Generando Ignition en ${GENERATED_DIR}/..."
 "$OPENSHIFT_INSTALL_BIN" create ignition-configs --dir="$GENERATED_DIR"
 echo "✔ Ignition generado correctamente."
 
@@ -57,9 +57,30 @@ mv -f "${GENERATED_DIR}"/*.ign "${IGNITION_DIR}/" 2>/dev/null || true
 echo "✔ Ignitions organizadas."
 
 # ----------------------------------------------------
-# 3. Terraform init y apply
+# 3. Crear symlink auth → generated/auth
 # ----------------------------------------------------
-echo "[2/4] Ejecutando terraform init..."
+echo "[2/5] Verificando symlink 'auth'..."
+
+if [[ -L "${PROJECT_ROOT}/auth" ]]; then
+    echo "✔ Symlink existente: auth → generated/auth"
+elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
+    echo "⚠ Directorio 'auth' existe y NO es symlink. Eliminando..."
+    rm -rf "${PROJECT_ROOT}/auth"
+    ln -s generated/auth auth
+    echo "✔ Symlink creado: auth → generated/auth"
+else
+    ln -s generated/auth auth
+    echo "✔ Symlink creado: auth → generated/auth"
+fi
+
+# Seguridad: mostrar contenido del auth real
+echo "[+] Contenido de generated/auth:"
+ls -l generated/auth || echo "⚠ WARNING: auth vacío (Terraform aún no creó VMs)"
+
+# ----------------------------------------------------
+# 4. Terraform init y apply
+# ----------------------------------------------------
+echo "[3/5] Ejecutando terraform init..."
 terraform -chdir="$TERRAFORM_DIR" init -input=false
 
 TFVARS=()
@@ -67,15 +88,15 @@ if [[ -f "${TERRAFORM_DIR}/terraform.tfvars" ]]; then
     TFVARS+=( -var-file="terraform.tfvars" )
 fi
 
-echo "[3/4] Ejecutando terraform apply..."
+echo "[4/5] Ejecutando terraform apply..."
 terraform -chdir="$TERRAFORM_DIR" apply -auto-approve "${TFVARS[@]}"
 
 echo "✔ Terraform aplicó la infraestructura correctamente."
 
 # ----------------------------------------------------
-# 4. Outputs finales
+# 5. Outputs finales
 # ----------------------------------------------------
-echo "[4/4] Outputs del cluster:"
+echo "[5/5] Outputs del cluster:"
 terraform -chdir="$TERRAFORM_DIR" output || true
 
 echo "=============================================="

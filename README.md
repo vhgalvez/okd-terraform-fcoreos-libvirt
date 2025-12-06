@@ -417,3 +417,36 @@ entonces NO destruyas el bootstrap.
 
 chmod +x destroy_bootstrap.sh
 ./destroy_bootstrap.sh
+
+
+
+# 🚀 Flujo completo de instalación y ciclo de vida de OKD 4.x con Terraform + Libvirt
+
+Este documento describe **paso a paso** el flujo completo para:
+
+1. Instalar herramientas de OKD (`oc`, `kubectl`, `openshift-install`)
+2. Desplegar el clúster con Terraform
+3. Esperar a que el **bootstrap** finalice correctamente
+4. Destruir el nodo **bootstrap**
+5. Configurar `kubeconfig` para usar `oc`
+6. (Opcional) Destruir toda la infraestructura
+7. (Opcional) Desinstalar herramientas de OKD
+
+Estructura del proyecto (resumen):
+
+```bash
+okd-terraform-fcoreos-libvirt/
+├── generated/
+│   ├── auth/                # kubeconfig + kubeadmin-password (post-ignition)
+│   └── ignition/            # *.ign que consume Terraform
+├── install-config/
+│   └── install-config.yaml  # Configuración base del cluster
+├── scripts/
+│   ├── install_okd_tools.sh
+│   ├── deploy.sh
+│   ├── destroy_bootstrap.sh
+│   ├── destroy.sh
+│   ├── configure_okd_kubeconfig.sh
+│   └── uninstall_okd.sh
+└── terraform/
+    └── ...                  # main.tf, vm-coreos.tf, terraform.tfvars, etc.
