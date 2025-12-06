@@ -51,5 +51,5 @@ rm -rf ~/.cache/openshift-install                    2>/dev/null || true
 
 echo "=============================================="
 echo "   CLEAN STATE COMPLETO — TODO ELIMINADO"
-echo "   install-config.yaml preservado SIEMPRE"
+echo "   cluster OKD destruido exitosamente."
 echo "=============================================="
