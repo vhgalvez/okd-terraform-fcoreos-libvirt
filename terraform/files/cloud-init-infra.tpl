@@ -9,8 +9,7 @@ users:
   - default
 
   - name: root
-    ssh_authorized_keys: 
-      ${ssh_keys}
+    ssh_authorized_keys: ${ssh_keys}
 
   - name: core
     gecos: "Core User"
@@ -18,8 +17,7 @@ users:
     groups: [wheel]
     shell: /bin/bash
     lock_passwd: false
-    ssh_authorized_keys: 
-      ${ssh_keys}
+    ssh_authorized_keys: ${ssh_keys}
 
 growpart:
   mode: auto
@@ -193,8 +191,8 @@ write_files:
 
       backend worker_ingress
         balance roundrobin
-        server worker 10.56.0.13:80 check
-        server worker 10.56.0.13:443 check
+        server worker80  10.56.0.13:80 check
+        server worker443 10.56.0.13:443 check
 
   #────────────────────────────────────────────────────────
   # Chrony — NTP
@@ -207,26 +205,37 @@ write_files:
       driftfile /var/lib/chrony/drift
       makestep 1.0 3
 
-
 ###########################################################
 # RUNCMD
 ###########################################################
 
 runcmd:
+  # Asegurar directorios necesarios
   - mkdir -p /etc/coredns
+  - mkdir -p /etc/haproxy/conf.d
+
+  # Instalar CoreDNS binario
+  - curl -Lo /usr/local/bin/coredns https://github.com/coredns/coredns/releases/download/v1.11.1/coredns_1.11.1_linux_amd64
+  - chmod +x /usr/local/bin/coredns
+
+  # /etc/hosts
   - /usr/local/bin/set-hosts.sh
 
+  # Red
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
+  # Paquetes base
   - dnf install -y firewalld chrony curl tar bind-utils haproxy
 
+  # sysctl
   - sysctl --system
 
+  # Servicios
   - systemctl daemon-reload
-  - systemctl enable firewalld chronyd haproxy
-  - systemctl restart firewalld chronyd haproxy
+  - systemctl enable firewalld chronyd haproxy coredns
+  - systemctl restart firewalld chronyd haproxy coredns
 
   # Firewall required
   - firewall-cmd --permanent --add-port=53/tcp
