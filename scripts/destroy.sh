@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # destroy.sh — Limpieza total del cluster OKD + Terraform
 set -euo pipefail
 
