@@ -494,3 +494,23 @@ Todo pasa por **un solo “cerebro de red”**: `okd-infra`.
 - [x] Plan de escalado definido para masters y workers
 
 Con esto tienes una **infraestructura de red sólida, entendible y escalable** para tu laboratorio OKD sobre KVM/Libvirt.
+
+
+
+
+# 1) Ver si cloud-init dejó los archivos
+ls -l /etc/coredns
+ls -l /etc/haproxy
+
+# 2) Servicios
+sudo systemctl status haproxy
+sudo systemctl status coredns
+sudo systemctl status chronyd
+
+# 3) Puertos escuchando
+sudo ss -lntp | egrep '53|80|443|6443|22623'
+
+# 4) DNS desde infra
+dig @10.56.0.10 api.okd-lab.cefaslocalserver.com
+dig @10.56.0.10 bootstrap.okd-lab.cefaslocalserver.com
+dig @10.56.0.10 api.okd-lab.cefaslocalserver.com
