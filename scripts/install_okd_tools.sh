@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# scripts/install_okd_tools.sh
 set -euo pipefail
 
 echo "==============================================="

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# uninstall_okd.sh
+# scripts/uninstall_okd.sh
 
 set -euo pipefail
 
