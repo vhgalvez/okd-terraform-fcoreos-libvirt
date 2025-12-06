@@ -31,9 +31,9 @@ resize_rootfs: true
 
 write_files:
 
-  # ──────────────────────────────────────────────
-  # NetworkManager (IP estática + DNS primario)
-  # ──────────────────────────────────────────────
+  #────────────────────────────────────────────────────────
+  # NetworkManager — IP estática + DNS interno
+  #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
     content: |
@@ -54,39 +54,38 @@ write_files:
       [ipv6]
       method=ignore
 
-  # ──────────────────────────────────────────────
-  # /etc/hosts gestionado por script
-  # ──────────────────────────────────────────────
+  #────────────────────────────────────────────────────────
+  # /etc/hosts dinámico
+  #────────────────────────────────────────────────────────
   - path: /usr/local/bin/set-hosts.sh
     permissions: "0755"
     content: |
       #!/bin/bash
-      SHORT=$(echo "${hostname}" | cut -d'.' -f1)
       echo "127.0.0.1   localhost" > /etc/hosts
       echo "::1         localhost" >> /etc/hosts
-      echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
+      echo "${ip}  ${hostname} ${short_hostname}" >> /etc/hosts
 
-  # ──────────────────────────────────────────────
-  # sysctl custom (IP forwarding + bind)
-  # ──────────────────────────────────────────────
+  #────────────────────────────────────────────────────────
+  # sysctl — soporte para LB
+  #────────────────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
     content: |
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
 
-  # ──────────────────────────────────────────────
-  # NetworkManager: no modificar resolv.conf
-  # ──────────────────────────────────────────────
+  #────────────────────────────────────────────────────────
+  # NetworkManager — no tocar resolv.conf
+  #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
     content: |
       [main]
       dns=none
 
-  # ──────────────────────────────────────────────
-  # CoreDNS: Corefile
-  # ──────────────────────────────────────────────
+  #────────────────────────────────────────────────────────
+  # CoreDNS — Corefile
+  #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
@@ -98,25 +97,25 @@ write_files:
         forward . 8.8.8.8 1.1.1.1
       }
 
-  # ──────────────────────────────────────────────
-  # CoreDNS: zona DNS interna con LA NUEVA RED 10.56.0.x
-  # ──────────────────────────────────────────────
+  #────────────────────────────────────────────────────────
+  # CoreDNS — Zona DNS OKD
+  #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
       $ORIGIN okd-lab.${cluster_domain}.
-      @   IN  SOA dns.okd-lab.${cluster_domain}. admin.okd-lab.${cluster_domain}. (
-              2025010101
-              7200
-              3600
-              1209600
-              3600 )
+      @ IN SOA dns.okd-lab.${cluster_domain}. admin.okd-lab.${cluster_domain}. (
+          2025010101
+          7200
+          3600
+          1209600
+          3600 )
 
       @       IN NS dns.okd-lab.${cluster_domain}.
       dns     IN A ${ip}
 
-      api         IN A 10.56.0.11
-      api-int     IN A 10.56.0.11
+      api         IN A 10.56.0.10
+      api-int     IN A 10.56.0.10
 
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
@@ -124,9 +123,9 @@ write_files:
 
       *.apps      IN A 10.56.0.13
 
-  # ──────────────────────────────────────────────
-  # CoreDNS service (systemd)
-  # ──────────────────────────────────────────────
+  #────────────────────────────────────────────────────────
+  # CoreDNS — servicio systemd
+  #────────────────────────────────────────────────────────
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
     content: |
@@ -143,75 +142,83 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-  # ──────────────────────────────────────────────
-  # Chrony — NTP apuntando a la nueva red
-  # ──────────────────────────────────────────────
+  #────────────────────────────────────────────────────────
+  # HAProxy — Load Balancer OKD
+  #────────────────────────────────────────────────────────
+  - path: /etc/haproxy/haproxy.cfg
+    permissions: "0644"
+    content: |
+      global
+        log /dev/log local0
+        maxconn 20000
+        daemon
+
+      defaults
+        mode tcp
+        log global
+        timeout connect 5s
+        timeout client 30s
+        timeout server 30s
+
+      frontend api
+        bind *:6443
+        default_backend api_nodes
+
+      backend api_nodes
+        balance roundrobin
+        option tcp-check
+        server bootstrap 10.56.0.11:6443 check fall 3 rise 2
+        server master    10.56.0.12:6443 check fall 3 rise 2
+
+      frontend mcs
+        bind *:22623
+        default_backend mcs_nodes
+
+      backend mcs_nodes
+        balance roundrobin
+        server bootstrap 10.56.0.11:22623 check fall 3 rise 2
+
+      frontend ingress80
+        bind *:80
+        default_backend worker_ingress
+
+      frontend ingress443
+        bind *:443
+        default_backend worker_ingress
+
+      backend worker_ingress
+        balance roundrobin
+        server worker 10.56.0.13:80 check
+        server worker 10.56.0.13:443 check
+
+  #────────────────────────────────────────────────────────
+  # Chrony — NTP
+  #────────────────────────────────────────────────────────
   - path: /etc/chrony.conf
     permissions: "0644"
     content: |
       server 10.56.0.11 iburst prefer
-      server 0.pool.ntp.org iburst
-      server 1.pool.ntp.org iburst
-      server 2.pool.ntp.org iburst
       allow 10.56.0.0/24
       driftfile /var/lib/chrony/drift
       makestep 1.0 3
-      bindcmdaddress 0.0.0.0
-      bindcmdaddress ::
+
 
 ###########################################################
-# RUNCMD — BOOT ORDER CORRECTO
+# RUNCMD — ORDEN DE BOOT
 ###########################################################
 
 runcmd:
-
-  # Swap
-  - fallocate -l 2G /swapfile
-  - chmod 600 /swapfile
-  - mkswap /swapfile
-  - swapon /swapfile
-  - echo "/swapfile none swap sw 0 0" >> /etc/fstab
-
-  # Aplicar /etc/hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Reload NetworkManager y aplicar la conexión estática
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
-  # Instalar paquetes base
-  - dnf install -y firewalld resolvconf chrony curl tar bind-utils
+  - dnf install -y firewalld resolvconf chrony curl tar bind-utils haproxy
 
-  # sysctl
   - sysctl --system
 
-  # resolvconf → resolv.conf real
-  - mkdir -p /etc/resolvconf/resolv.conf.d
-  - echo "nameserver ${dns1}" > /etc/resolvconf/resolv.conf.d/base
-  - echo "nameserver ${dns2}" >> /etc/resolvconf/resolv.conf.d/base
-  - echo "search okd-lab.${cluster_domain}" >> /etc/resolvconf/resolv.conf.d/base
-  - resolvconf -u
-
-  # CoreDNS instalación
-  - mkdir -p /etc/coredns
-  - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
-  - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
-  - rm -f /tmp/coredns.tgz
-  - chmod +x /usr/local/bin/coredns
-
-  # Servicios: enable + restart (más robusto que --now)
-  - systemctl daemon-reload
-  - systemctl enable NetworkManager firewalld chronyd coredns
-  - systemctl restart NetworkManager firewalld chronyd coredns
-
-  # Firewall
-  - firewall-cmd --permanent --add-port=53/tcp
-  - firewall-cmd --permanent --add-port=53/udp
-  - firewall-cmd --permanent --add-port=80/tcp
-  - firewall-cmd --permanent --add-port=443/tcp
-  - firewall-cmd --permanent --add-port=6443/tcp
-  - firewall-cmd --permanent --add-port=22623/tcp
-  - firewall-cmd --reload
+  - systemctl enable firewalld chronyd haproxy
+  - systemctl restart firewalld chronyd haproxy
 
 timezone: ${timezone}

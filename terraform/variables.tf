@@ -12,7 +12,7 @@ variable "network_name" {
 variable "network_cidr" {
   description = "CIDR de la red libvirt"
   type        = string
-  default     = "10.17.3.0/24"
+  default     = "10.56.0.0/24"
 }
 
 # ================================
