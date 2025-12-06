@@ -8,7 +8,7 @@ network_cidr = "10.56.0.0/24"
 # ================================
 #  IMÁGENES
 # ================================
-coreos_image    = "/var/lib/libvirt/images/fedora-coreos-38.20230918.3.0-qemu.x86_64.qcow2"
+coreos_image    = "/var/lib/libvirt/images/scos-9.0.20250515-0-metal.x86_64.raw"
 almalinux_image = "/var/lib/libvirt/images/AlmaLinux-9-GenericCloud-9.5-20241120.x86_64.qcow2"
 
 # ================================
