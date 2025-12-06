@@ -10,7 +10,8 @@ echo "==============================================="
 # ------------------------------------------------
 # CONFIGURACIÓN: SOLO MODIFICAR ESTA VARIABLE
 # ------------------------------------------------
-OKD_TAG="4.13.0-0.okd-2023-10-28-065448"
+
+OKD_TAG="4.12.0-0.okd-2023-01-21-042244"
 
 BASE_URL="https://github.com/okd-project/okd/releases/download/${OKD_TAG}"
 
