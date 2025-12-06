@@ -1,4 +1,5 @@
 # terraform/vm-coreos.tf
+
 #############################################
 # BASE COREOS IMAGE
 #############################################
@@ -32,9 +33,10 @@ resource "libvirt_volume" "worker_disk" {
 #############################################
 
 resource "libvirt_domain" "bootstrap" {
-  name   = "okd-bootstrap"
-  memory = var.bootstrap.memory
-  vcpu   = var.bootstrap.cpus
+  name      = "okd-bootstrap"
+  memory    = var.bootstrap.memory
+  vcpu      = var.bootstrap.cpus
+  autostart = true
 
   cpu {
     mode = "host-passthrough"
@@ -43,15 +45,17 @@ resource "libvirt_domain" "bootstrap" {
   network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.bootstrap.mac
-    addresses  = [var.bootstrap.ip]
+    # No uses "addresses": Ignition configura la IP real.
   }
 
   disk {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
+  # Ignition de OpenShift
   coreos_ignition = libvirt_ignition.bootstrap.id
 
+  # VNC obligatorio (SPICE no soportado en tu QEMU)
   graphics {
     type           = "vnc"
     autoport       = true
@@ -75,9 +79,10 @@ resource "libvirt_domain" "bootstrap" {
 #############################################
 
 resource "libvirt_domain" "master" {
-  name   = "okd-master"
-  memory = var.master.memory
-  vcpu   = var.master.cpus
+  name      = "okd-master"
+  memory    = var.master.memory
+  vcpu      = var.master.cpus
+  autostart = true
 
   cpu {
     mode = "host-passthrough"
@@ -86,7 +91,6 @@ resource "libvirt_domain" "master" {
   network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.master.mac
-    addresses  = [var.master.ip]
   }
 
   disk {
@@ -118,9 +122,10 @@ resource "libvirt_domain" "master" {
 #############################################
 
 resource "libvirt_domain" "worker" {
-  name   = "okd-worker"
-  memory = var.worker.memory
-  vcpu   = var.worker.cpus
+  name      = "okd-worker"
+  memory    = var.worker.memory
+  vcpu      = var.worker.cpus
+  autostart = true
 
   cpu {
     mode = "host-passthrough"
@@ -129,7 +134,6 @@ resource "libvirt_domain" "worker" {
   network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.worker.mac
-    addresses  = [var.worker.ip]
   }
 
   disk {

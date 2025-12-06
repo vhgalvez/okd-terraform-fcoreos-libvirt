@@ -27,8 +27,8 @@ data "template_file" "infra_cloud_init" {
     dns2           = var.dns2
     cluster_domain = var.cluster_domain
 
-    # SSH / timezone
-    ssh_keys       = var.ssh_keys     # ✅ corregido
+    # SSH / zona horaria
+    ssh_keys       = jsonencode(var.ssh_keys)
     timezone       = var.timezone
   }
 }
@@ -53,7 +53,7 @@ resource "libvirt_domain" "infra" {
 
   network_interface {
     network_id = libvirt_network.okd_net.id
-    addresses  = [var.infra.ip]  # OK usar esto
+    addresses  = [var.infra.ip]
   }
 
   disk {
@@ -62,7 +62,8 @@ resource "libvirt_domain" "infra" {
 
   cloudinit = libvirt_cloudinit_disk.infra_init.id
 
-  # Forzar VNC
+  # 🔥 Forzamos VNC — evita SPICE:
+  # “spice graphics are not supported with this QEMU”
   graphics {
     type           = "vnc"
     autoport       = true

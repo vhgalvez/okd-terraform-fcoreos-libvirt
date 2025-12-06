@@ -64,5 +64,5 @@ worker = {
 dns1           = "8.8.8.8"
 dns2           = "10.56.0.10"
 gateway        = "10.56.0.1"
-cluster_domain = "cefaslocalserver.com"
+cluster_domain = "okd.local"
 timezone       = "UTC"

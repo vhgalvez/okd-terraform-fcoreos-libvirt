@@ -47,12 +47,13 @@ write_files:
       method=manual
       address1=${ip}/24,${gateway}
       dns=${dns1};${dns2}
-      dns-search=okd.${cluster_domain}
+      dns-search=okd.okd.local
       may-fail=false
       route-metric=10
 
       [ipv6]
       method=ignore
+
 
   #────────────────────────────────────────────────────────
   # /etc/hosts dinámico
@@ -66,6 +67,7 @@ write_files:
       echo "::1         localhost" >> /etc/hosts
       echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
+
   #────────────────────────────────────────────────────────
   # sysctl — requerido para DNS + API
   #────────────────────────────────────────────────────────
@@ -74,6 +76,7 @@ write_files:
     content: |
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
+
 
   #────────────────────────────────────────────────────────
   # NetworkManager — no tocar resolv.conf
@@ -84,18 +87,20 @@ write_files:
       [main]
       dns=none
 
+
   #────────────────────────────────────────────────────────
   # CoreDNS — Corefile
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
-      okd.${cluster_domain} {
+      okd.okd.local {
         file /etc/coredns/db.okd
       }
       . {
         forward . 8.8.8.8 1.1.1.1
       }
+
 
   #────────────────────────────────────────────────────────
   # CoreDNS — Zona DNS interna OKD
@@ -103,14 +108,14 @@ write_files:
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
-      $ORIGIN okd.${cluster_domain}.
-      @   IN  SOA dns.okd.${cluster_domain}. admin.okd.${cluster_domain}. (
+      $ORIGIN okd.okd.local.
+      @   IN  SOA dns.okd.okd.local. admin.okd.okd.local. (
               2025010101
               7200
               3600
               1209600
               3600 )
-      @       IN NS dns.okd.${cluster_domain}.
+      @       IN NS dns.okd.okd.local.
       dns     IN A ${ip}
 
       api         IN A 10.56.0.11
@@ -121,6 +126,7 @@ write_files:
       worker      IN A 10.56.0.13
 
       *.apps      IN A 10.56.0.13
+
 
   #────────────────────────────────────────────────────────
   # CoreDNS — systemd service
@@ -140,6 +146,7 @@ write_files:
 
       [Install]
       WantedBy=multi-user.target
+
 
   #────────────────────────────────────────────────────────
   # HAProxy — configuración correcta
@@ -190,6 +197,7 @@ write_files:
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
 
+
   #────────────────────────────────────────────────────────
   # Chrony — NTP
   #────────────────────────────────────────────────────────
@@ -233,7 +241,7 @@ runcmd:
 
   # resolv.conf estático
   - rm -f /etc/resolv.conf
-  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch okd.${cluster_domain}\n" > /etc/resolv.conf
+  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch okd.okd.local\n" > /etc/resolv.conf
 
   # CoreDNS
   - mkdir -p /etc/coredns
