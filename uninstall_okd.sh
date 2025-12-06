@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+# uninstall_okd.sh
+
 set -euo pipefail
 
 BIN_DIR="/opt/bin"
