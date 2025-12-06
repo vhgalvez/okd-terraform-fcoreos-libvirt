@@ -383,3 +383,37 @@ sudo fio --name=etcd_like \
   --time_based --runtime=60
 
 ```
+
+
+verificar status con openshift-install
+
+En la carpeta donde está tu install-config.yaml y los .ign, ejecuta:
+
+openshift-install wait-for bootstrap-complete --log-level=info
+
+
+Verás algo como:
+
+INFO Waiting up to 20m0s for the Kubernetes API at https://api.okd-lab.cefaslocalserver.com:6443...
+INFO API v1.25.0 up
+INFO Waiting up to 40m0s for bootstrapping to complete...
+INFO Bootstrap status: complete
+INFO It is now safe to remove the bootstrap resources
+
+
+👉 Cuando aparezca EXACTAMENTE esta línea:
+
+INFO Bootstrap status: complete
+
+
+Ya puedes ejecutar destroy_bootstrap.sh.
+
+Si aparece:
+
+ERROR Bootstrap failed to complete
+
+
+entonces NO destruyas el bootstrap.
+
+chmod +x destroy_bootstrap.sh
+./destroy_bootstrap.sh
