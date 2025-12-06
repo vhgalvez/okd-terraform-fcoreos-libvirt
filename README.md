@@ -321,7 +321,7 @@ sudo nano /etc/sysconfig/nftables.conf
 
 ```
 
-
+```bash
 sudo chown -R victory:victory /home/victory/okd-terraform-fcoreos-libvirt
 
 cd install-config
@@ -338,6 +338,48 @@ sudo grep -o "ssh-rsa" ignition/bootstrap.ign | wc -l
 verificar si la clave ssh está en el ignition del bootstrap
 grep -R "ssh" -n ignition/bootstrap.ign
 
+```
 
 ## error
 error [error](error.md)
+
+
+
+
+
+## latencia en la VM okd-bootstrap.
+
+Conéctese a su VM okd-bootstrap (ID 7) y ejecute los siguientes comandos:
+
+Instalar fio (si no está instalado):
+
+Bash
+
+# En el nodo okd-bootstrap
+
+```bash
+sudo dnf install -y fio || sudo yum install -y fio 
+```
+Ejecutar la prueba de latencia (randwrite, 4K blocks):
+
+
+
+# En el nodo okd-bootstrap
+
+```bash
+sudo fio --name=iops_test --filesize=1G --bs=4k --ioengine=libaio --iodepth=64 --rw=ran
+```
+
+
+```bash
+sudo fio --name=etcd_like \
+  --filename=/var/lib/etcd_testfile \
+  --filesize=1G \
+  --rw=write \
+  --bs=4k \
+  --ioengine=sync \
+  --iodepth=1 \
+  --fsync=1 \
+  --time_based --runtime=60
+
+```
