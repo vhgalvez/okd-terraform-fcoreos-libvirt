@@ -5,125 +5,135 @@ echo "==============================================="
 echo "  Instalador de herramientas OKD / OpenShift"
 echo "==============================================="
 
+# ------------------------------------------------
+# CONFIGURACIÓN: SOLO MODIFICAR ESTA VARIABLE
+# ------------------------------------------------
+OKD_TAG="4.13.0-0.okd-2023-10-28-065448"
 
-# --- CONFIG ---
-OKD_CLIENT_URL="https://github.com/okd-project/okd/releases/download/4.13.0-0.okd-2023-10-28-065448/openshift-client-linux-4.13.0-0.okd-2023-10-28-065448.tar.gz"
-OKD_CLIENT_SHA256="3ef39e048cda1ab4f27c67f5999ea11ebad84811b01a8e473d440cf96e19991a"
+BASE_URL="https://github.com/okd-project/okd/releases/download/${OKD_TAG}"
 
-OKD_INSTALLER_URL="https://github.com/okd-project/okd/releases/download/4.13.0-0.okd-2023-10-28-065448/openshift-install-linux-4.13.0-0.okd-2023-10-28-065448.tar.gz"
-OKD_INSTALLER_SHA256="0cd103ebe22cc3e9ec2e7da302843074350a4af12422d0fb8f76a06d1f43fae9"
+CLIENT_FILE="openshift-client-linux-${OKD_TAG}.tar.gz"
+INSTALL_FILE="openshift-install-linux-${OKD_TAG}.tar.gz"
 
 BIN_DIR="/opt/bin"
-TMP_CLIENT="/tmp/okd-client"
-TMP_INSTALL="/tmp/okd-installer"
+TMP_DIR="/tmp/okd-tools"
 
-# --- PREPARAR DIRECTORIOS ---
-echo "[+] Creando directorio de binarios: ${BIN_DIR}"
+# ------------------------------------------------
+# Preparación de directorios
+# ------------------------------------------------
+echo "[+] Preparando entorno..."
 sudo mkdir -p "$BIN_DIR"
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+cd "$TMP_DIR"
 
-echo "[+] Limpiando y creando directorios temporales..."
-sudo rm -rf "$TMP_CLIENT" "$TMP_INSTALL"
-mkdir -p "$TMP_CLIENT" "$TMP_INSTALL"
+echo "[+] Descargando sha256sum oficial..."
+wget -q "${BASE_URL}/sha256sum.txt" -O sha256sum.txt
 
-# --- INSTALAR CLIENTE (oc + kubectl) ---
-echo
-echo "==============================================="
-echo "  Instalando OpenShift Client (oc + kubectl)"
-echo "==============================================="
-
-cd "$TMP_CLIENT"
-
-echo "[+] Descargando cliente OKD..."
-wget -q "$OKD_CLIENT_URL" -O openshift-client-linux.tar.gz
-
-echo "[+] Verificando SHA256 del cliente..."
-SHA_ACTUAL_CLIENT=$(sha256sum openshift-client-linux.tar.gz | awk '{print $1}')
-echo "  - Esperado: $OKD_CLIENT_SHA256"
-echo "  - Actual:   $SHA_ACTUAL_CLIENT"
-
-if [[ "$SHA_ACTUAL_CLIENT" != "$OKD_CLIENT_SHA256" ]]; then
-    echo "❌ ERROR: Hash SHA256 del cliente NO coincide"
+if [[ ! -s sha256sum.txt ]]; then
+    echo "❌ ERROR: No se pudo descargar sha256sum.txt"
     exit 1
 fi
-echo "✔ Hash del cliente verificado."
+
+# ------------------------------------------------
+# Función para descargar y validar un archivo
+# ------------------------------------------------
+download_and_verify() {
+    local FILE="$1"
+    local URL="$2"
+    
+    echo ""
+    echo "==============================================="
+    echo "  Descargando y verificando: $FILE"
+    echo "==============================================="
+    
+    echo "[+] Descargando $FILE ..."
+    wget -q "$URL" -O "$FILE"
+    
+    if [[ ! -s "$FILE" ]]; then
+        echo "❌ ERROR: Archivo vacío o no descargado: $FILE"
+        exit 1
+    fi
+    
+    echo "[+] Calculando hash SHA256..."
+    SHA_ACTUAL=$(sha256sum "$FILE" | awk '{print $1}')
+    
+    SHA_ESPERADO=$(grep "  $FILE\$" sha256sum.txt | awk '{print $1}')
+    
+    if [[ -z "$SHA_ESPERADO" ]]; then
+        echo "❌ ERROR: No se encontró hash en sha256sum.txt para $FILE"
+        exit 1
+    fi
+    
+    echo "  - Esperado: $SHA_ESPERADO"
+    echo "  - Actual:   $SHA_ACTUAL"
+    
+    if [[ "$SHA_ACTUAL" != "$SHA_ESPERADO" ]]; then
+        echo "❌ ERROR: Hash SHA256 NO coincide para $FILE"
+        exit 1
+    fi
+    
+    echo "✔ Hash verificado correctamente para $FILE"
+}
+
+# ------------------------------------------------
+# Cliente (oc + kubectl)
+# ------------------------------------------------
+download_and_verify "$CLIENT_FILE" "${BASE_URL}/${CLIENT_FILE}"
 
 echo "[+] Extrayendo oc y kubectl..."
-tar -xzf openshift-client-linux.tar.gz oc kubectl
+tar -xzf "$CLIENT_FILE" oc kubectl
 
-echo "[+] Instalando oc y kubectl en ${BIN_DIR}"
+echo "[+] Instalando en ${BIN_DIR}..."
 sudo mv -f oc kubectl "$BIN_DIR/"
 sudo chmod +x "$BIN_DIR/oc" "$BIN_DIR/kubectl"
 
-echo "[+] Cliente instalado:"
-"$BIN_DIR/oc" version --client || true
+# ------------------------------------------------
+# Installer (openshift-install)
+# ------------------------------------------------
+download_and_verify "$INSTALL_FILE" "${BASE_URL}/${INSTALL_FILE}"
 
-# Asegurar PATH
+echo "[+] Extrayendo openshift-install..."
+tar -xzf "$INSTALL_FILE" openshift-install
+
+echo "[+] Instalando en ${BIN_DIR}..."
+sudo mv -f openshift-install "$BIN_DIR/"
+sudo chmod +x "$BIN_DIR/openshift-install"
+
+# ------------------------------------------------
+# PATH
+# ------------------------------------------------
 if ! grep -q "export PATH=/opt/bin:\$PATH" "$HOME/.bashrc"; then
     echo "[+] Añadiendo /opt/bin al PATH en ~/.bashrc"
     echo 'export PATH=/opt/bin:$PATH' >> "$HOME/.bashrc"
 fi
+
 export PATH=/opt/bin:$PATH
 
-echo "[+] Ruta actual de oc:"
-command -v oc || true
-
-# --- INSTALAR INSTALLER ---
-echo
+# ------------------------------------------------
+# Verificación final
+# ------------------------------------------------
+echo ""
 echo "==============================================="
-echo "  Instalando OKD Installer"
-echo "==============================================="
-
-cd "$TMP_INSTALL"
-
-echo "[+] Descargando instalador..."
-wget -q "$OKD_INSTALLER_URL" -O openshift-install-linux.tar.gz
-
-echo "[+] Verificando SHA256 del instalador..."
-SHA_ACTUAL_INSTALL=$(sha256sum openshift-install-linux.tar.gz | awk '{print $1}')
-echo "  - Esperado: $OKD_INSTALLER_SHA256"
-echo "  - Actual:   $SHA_ACTUAL_INSTALL"
-
-if [[ "$SHA_ACTUAL_INSTALL" != "$OKD_INSTALLER_SHA256" ]]; then
-    echo "❌ ERROR: Hash SHA256 del instalador NO coincide"
-    exit 1
-fi
-echo "✔ Hash del instalador verificado."
-
-echo "[+] Extrayendo openshift-install..."
-tar -xzf openshift-install-linux.tar.gz openshift-install
-
-echo "[+] Instalando openshift-install en ${BIN_DIR}"
-sudo mv -f openshift-install "$BIN_DIR/"
-sudo chmod +x "$BIN_DIR/openshift-install"
-
-echo "[+] Versión del instalador:"
-"$BIN_DIR/openshift-install" version || true
-
-# ================================================================
-# --- VERIFICACIÓN FINAL ---
-# ================================================================
-echo
-echo "==============================================="
-echo "  Verificación final (binarios OKD)"
+echo "  Verificación final"
 echo "==============================================="
 
 echo -n "[*] oc disponible... "
-command -v oc >/dev/null 2>&1 && echo "✔" || echo "❌"
+command -v oc >/dev/null && echo "✔" || echo "❌"
 
 echo -n "[*] kubectl disponible... "
-command -v kubectl >/dev/null 2>&1 && echo "✔" || echo "❌"
+command -v kubectl >/dev/null && echo "✔" || echo "❌"
 
 echo -n "[*] openshift-install disponible... "
-command -v openshift-install >/dev/null 2>&1 && echo "✔" || echo "❌"
+command -v openshift-install >/dev/null && echo "✔" || echo "❌"
 
-echo "[*] Verificando ejecución de oc..."
-oc version --client && echo "✔ oc funciona" || echo "⚠ oc funciona pero no hay cluster"
+echo "[*] Versión oc:"
+oc version --client || true
 
-echo "[*] Verificando ejecución de openshift-install..."
-openshift-install version && echo "✔ openshift-install funciona" || echo "❌ ERROR"
+echo "[*] Versión openshift-install:"
+openshift-install version || true
 
-echo
+echo ""
 echo "==============================================="
-echo "  Herramientas OKD instaladas correctamente."
-echo "  Ahora puedes generar Ignition y crear el clúster."
+echo "  OKD instalado correctamente."
 echo "==============================================="
