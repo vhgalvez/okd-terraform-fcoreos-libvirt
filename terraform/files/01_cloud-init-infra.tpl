@@ -47,7 +47,7 @@ write_files:
       method=manual
       address1=${ip}/24,${gateway}
       dns=${dns1};${dns2}
-      dns-search=okd.${cluster_domain}
+      dns-search=okd-lab.${cluster_domain}
       may-fail=false
       route-metric=10
 
@@ -90,7 +90,7 @@ write_files:
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
-      okd.${cluster_domain} {
+      okd-lab.${cluster_domain} {
         file /etc/coredns/db.okd
       }
       . {
@@ -103,14 +103,14 @@ write_files:
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
-      $ORIGIN okd.${cluster_domain}.
-      @   IN  SOA dns.okd.${cluster_domain}. admin.okd.${cluster_domain}. (
+      $ORIGIN okd-lab.${cluster_domain}.
+      @   IN  SOA dns.okd-lab.${cluster_domain}. admin.okd-lab.${cluster_domain}. (
               2025010101
               7200
               3600
               1209600
               3600 )
-      @       IN NS dns.okd.${cluster_domain}.
+      @       IN NS dns.okd-lab.${cluster_domain}.
       dns     IN A ${ip}
 
       api         IN A 10.56.0.11
@@ -233,7 +233,7 @@ runcmd:
 
   # resolv.conf estático
   - rm -f /etc/resolv.conf
-  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch okd.${cluster_domain}\n" > /etc/resolv.conf
+  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch okd-lab.${cluster_domain}\n" > /etc/resolv.conf
 
   # CoreDNS
   - mkdir -p /etc/coredns
@@ -242,7 +242,9 @@ runcmd:
   - chmod +x /usr/local/bin/coredns
   - rm -f /tmp/coredns.tgz
 
-  # SELinux FIX para HAProxy
+  #────────────────────────────────────────────────────────
+  # 🔥 SELinux FIX PARA HAProxy (puertos <1024 + bind)
+  #────────────────────────────────────────────────────────
   - setsebool -P haproxy_connect_any 1
   - setsebool -P httpd_can_network_connect 1
   - semanage port -a -t http_port_t -p tcp 6443 || true
