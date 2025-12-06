@@ -453,5 +453,6 @@ okd-terraform-fcoreos-libvirt/
 
 
 
+EN BOOTSTRAP:
 
 journalctl -b -f -u bootkube.service
