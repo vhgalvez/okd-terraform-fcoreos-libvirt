@@ -16,21 +16,19 @@ data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
 
   vars = {
-    # Hostnames
     hostname       = var.infra.hostname
     short_hostname = split(".", var.infra.hostname)[0]
 
-    # Red
     ip             = var.infra.ip
     gateway        = var.gateway
     dns1           = var.dns1
     dns2           = var.dns2
     cluster_domain = var.cluster_domain
 
-    # SSH / timezone
-    ssh_keys       = var.ssh_keys     # ✅ corregido
-    timezone       = var.timezone
+    ssh_keys = join("\n", var.ssh_keys)
+    timezone = var.timezone
   }
+
 }
 
 resource "libvirt_cloudinit_disk" "infra_init" {
@@ -53,7 +51,7 @@ resource "libvirt_domain" "infra" {
 
   network_interface {
     network_id = libvirt_network.okd_net.id
-    addresses  = [var.infra.ip]  # OK usar esto
+    addresses  = [var.infra.ip] # OK usar esto
   }
 
   disk {
