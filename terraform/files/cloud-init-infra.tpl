@@ -93,6 +93,7 @@ write_files:
       okd-lab.${cluster_domain} {
         file /etc/coredns/db.okd
       }
+
       . {
         forward . 8.8.8.8 1.1.1.1
       }
@@ -190,7 +191,7 @@ write_files:
 
       backend worker_ingress
         balance roundrobin
-        server worker80  10.56.0.13:80 check
+        server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
 
   #────────────────────────────────────────────────────────
@@ -228,18 +229,15 @@ runcmd:
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
-  # Instalar paquetes necesarios
-  - dnf install -y firewalld resolvconf chrony curl tar bind-utils haproxy
+  # Instalar paquetes necesarios (SIN resolvconf para evitar romper dnf)
+  - dnf install -y firewalld chrony curl tar bind-utils haproxy
 
   # sysctl
   - sysctl --system
 
-  # resolv.conf permanente
-  - mkdir -p /etc/resolvconf/resolv.conf.d
-  - echo "nameserver ${dns1}" > /etc/resolvconf/resolv.conf.d/base
-  - echo "nameserver ${dns2}" >> /etc/resolvconf/resolv.conf.d/base
-  - echo "search okd-lab.${cluster_domain}" >> /etc/resolvconf/resolv.conf.d/base
-  - resolvconf -u
+  # resolv.conf fijo (sin resolvconf)
+  - rm -f /etc/resolv.conf
+  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch okd-lab.${cluster_domain}\n" > /etc/resolv.conf
 
   # Descargar CoreDNS binario real
   - mkdir -p /etc/coredns
