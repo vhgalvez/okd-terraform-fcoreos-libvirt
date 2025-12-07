@@ -47,7 +47,7 @@ write_files:
       method=manual
       address1=${ip}/24,${gateway}
       dns=${dns1};${dns2}
-      dns-search=${cluster_fqdn}
+      dns-search=${cluster_name}.${cluster_domain}
       may-fail=false
       route-metric=10
 
@@ -85,12 +85,12 @@ write_files:
       dns=none
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — Corefile (zona completa okd.okd.local)
+  # CoreDNS — Corefile
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
-      ${cluster_fqdn} {
+      ${cluster_name}.${cluster_domain} {
         file /etc/coredns/db.okd
       }
       . {
@@ -98,19 +98,19 @@ write_files:
       }
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — Base de zona correcta para OKD
+  # CoreDNS — Base de zona DNS OKD
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
-      $ORIGIN ${cluster_fqdn}.
-      @   IN  SOA dns.${cluster_fqdn}. admin.${cluster_fqdn}. (
+      $ORIGIN ${cluster_name}.${cluster_domain}.
+      @   IN  SOA dns.${cluster_name}.${cluster_domain}. admin.${cluster_name}.${cluster_domain}. (
               2025010101
               7200
               3600
               1209600
               3600 )
-      @       IN NS dns.${cluster_fqdn}.
+      @       IN NS dns.${cluster_name}.${cluster_domain}.
       dns         IN A ${ip}
 
       api         IN A 10.56.0.11
@@ -216,9 +216,9 @@ runcmd:
 
   - sysctl --system
 
-  # resolv.conf CORRECTO
+  # resolv.conf correcto
   - rm -f /etc/resolv.conf
-  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_fqdn}\n" > /etc/resolv.conf
+  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
 
   # CoreDNS instalación
   - mkdir -p /etc/coredns
@@ -233,7 +233,7 @@ runcmd:
   - semanage port -a -t http_port_t -p tcp 6443 || true
   - semanage port -a -t http_port_t -p tcp 22623 || true
 
-  # Servicios
+  # Services
   - systemctl daemon-reload
   - systemctl enable NetworkManager firewalld chronyd coredns haproxy
   - systemctl restart NetworkManager firewalld chronyd coredns haproxy
