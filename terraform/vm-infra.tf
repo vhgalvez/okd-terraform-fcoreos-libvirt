@@ -96,43 +96,45 @@ resource "libvirt_domain" "infra" {
   }
 
   devices = {
-  disks = [
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.infra_disk.pool
-          volume = libvirt_volume.infra_disk.name
+    disks = [
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.infra_disk.pool
+            volume = libvirt_volume.infra_disk.name
+          }
+        }
+        target = {
+          dev = "vda"
+          bus = "virtio"
+        }
+      },
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.infra_ignition.pool
+            volume = libvirt_volume.infra_ignition.name
+          }
+        }
+        target = {
+          dev = "vdb"
+          bus = "virtio"
         }
       }
-      target = {
-        dev = "vda"
-        bus = "virtio"
-      }
-    },
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.infra_ignition.pool
-          volume = libvirt_volume.infra_ignition.name
-        }
-      }
-      target = {
-        dev = "vdb"
-        bus = "virtio"
-      }
-    }
-  ]
+    ]
 
-  interfaces = [
-    {
-      model = { type = "virtio" }
-      source = {
-        network = {
-          network = libvirt_network.okd_net.name
+    interfaces = [
+      {
+        model = { type = "virtio" }
+        source = {
+          network = {
+            network = libvirt_network.okd_net.name
+          }
         }
+        mac = { address = var.infra.mac }
       }
-      mac = { address = var.infra.mac }
-    }
-  ]
+    ]
+  }
 }
+
 
