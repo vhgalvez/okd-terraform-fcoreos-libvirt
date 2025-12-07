@@ -2,7 +2,7 @@
 ###############################################
 # DISCO DEL NODO INFRA (AlmaLinux)
 ###############################################
-resource "libvirt_volume" "infra_disk" {
+resource "libvirt_volume" "infra_disk_infra" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
@@ -24,7 +24,7 @@ resource "libvirt_volume" "infra_disk" {
 ###############################################
 # CLOUD-INIT TEMPLATE
 ###############################################
-data "template_file" "infra_cloud_init" {
+data "template_file" "infra_cloud_init_infra" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
 
   vars = {
@@ -49,9 +49,9 @@ data "template_file" "infra_cloud_init" {
 ###############################################
 # CLOUD-INIT ISO
 ###############################################
-resource "libvirt_cloudinit_disk" "infra_init" {
+resource "libvirt_cloudinit_disk" "infra_init_infra" {
   name      = "infra-cloudinit"
-  user_data = data.template_file.infra_cloud_init.rendered
+  user_data = data.template_file.infra_cloud_init_infra.rendered
 
   meta_data = yamlencode({
     instance-id    = "okd-infra"
@@ -59,13 +59,13 @@ resource "libvirt_cloudinit_disk" "infra_init" {
   })
 }
 
-resource "libvirt_volume" "infra_cloudinit" {
+resource "libvirt_volume" "infra_cloudinit_infra" {
   name = "infra-cloudinit.iso"
   pool = libvirt_pool.okd.name
 
   create = {
     content = {
-      url = libvirt_cloudinit_disk.infra_init.path
+      url = libvirt_cloudinit_disk.infra_init_infra.path
     }
   }
 
@@ -79,7 +79,7 @@ resource "libvirt_volume" "infra_cloudinit" {
 ###############################################
 # VM INFRA (HAProxy + CoreDNS)
 ###############################################
-resource "libvirt_domain" "infra" {
+resource "libvirt_domain" "infra_infra" {
   name      = "okd-infra"
   type      = "kvm"
   vcpu      = var.infra.cpus
@@ -103,8 +103,8 @@ resource "libvirt_domain" "infra" {
         # Disco principal de AlmaLinux
         source = {
           volume = {
-            pool   = libvirt_volume.infra_disk.pool
-            volume = libvirt_volume.infra_disk.name
+            pool   = libvirt_volume.infra_disk_infra.pool
+            volume = libvirt_volume.infra_disk_infra.name
           }
         }
         target = {
@@ -116,8 +116,8 @@ resource "libvirt_domain" "infra" {
         # Segundo disco: ISO de cloud-init
         source = {
           volume = {
-            pool   = libvirt_volume.infra_cloudinit.pool
-            volume = libvirt_volume.infra_cloudinit.name
+            pool   = libvirt_volume.infra_cloudinit_infra.pool
+            volume = libvirt_volume.infra_cloudinit_infra.name
           }
         }
         target = {
@@ -139,9 +139,6 @@ resource "libvirt_domain" "infra" {
       }
     ]
   }
-
-
-
 
   # Consola serie para ver el boot:
   # sudo virsh console okd-infra
