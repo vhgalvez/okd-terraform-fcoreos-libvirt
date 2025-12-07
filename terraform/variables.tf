@@ -24,7 +24,7 @@ variable "ssh_keys" {
 }
 
 # ================================
-#  INFRA NODE
+#  INFRA NODE (AlmaLinux)
 # ================================
 variable "infra" {
   description = "Configuración del nodo infra"
@@ -33,11 +33,12 @@ variable "infra" {
     memory   = number
     ip       = string
     hostname = string
+    mac      = string
   })
 }
 
 # ================================
-#  BOOTSTRAP NODE
+#  BOOTSTRAP NODE (FCOS)
 # ================================
 variable "bootstrap" {
   description = "Configuración del nodo bootstrap"
@@ -50,7 +51,7 @@ variable "bootstrap" {
 }
 
 # ================================
-#  MASTER NODE
+#  MASTER NODE (FCOS)
 # ================================
 variable "master" {
   description = "Configuración del nodo master"
@@ -63,7 +64,7 @@ variable "master" {
 }
 
 # ================================
-#  WORKER NODE
+#  WORKER NODE (FCOS)
 # ================================
 variable "worker" {
   description = "Configuración del nodo worker"
@@ -111,11 +112,6 @@ variable "cluster_domain" {
   type        = string
 }
 
-variable "timezone" {
-  description = "Zona horaria del sistema"
-  type        = string
-  default     = "UTC"
-}
 variable "cluster_name" {
   description = "Nombre del cluster OKD (usado en FQDN internos)"
   type        = string
@@ -126,7 +122,8 @@ variable "infra_ip" {
   type        = string
 }
 
-variable "mac" {
-  description = "Dirección MAC para la interfaz de red"
+variable "timezone" {
+  description = "Zona horaria del sistema"
   type        = string
+  default     = "UTC"
 }
