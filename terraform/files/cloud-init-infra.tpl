@@ -98,7 +98,7 @@ write_files:
       }
 
   #----------------------------------------------------------
-  # CoreDNS — Base de zona
+  # CoreDNS zona con registros OKD
   #----------------------------------------------------------
   - path: /etc/coredns/db.okd
     permissions: "0644"
@@ -124,7 +124,7 @@ write_files:
       *.apps      IN A 10.56.0.13
 
   #----------------------------------------------------------
-  # CoreDNS systemd service
+  # CoreDNS systemd service — usa /opt/coredns
   #----------------------------------------------------------
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
@@ -135,8 +135,9 @@ write_files:
       Wants=network-online.target
 
       [Service]
-      ExecStart=/usr/local/bin/coredns -conf=/etc/coredns/Corefile
-      Restart=always
+      Type=simple
+      ExecStart=/opt/coredns/coredns -conf=/etc/coredns/Corefile
+      Restart=on-failure
       LimitNOFILE=1048576
 
       [Install]
@@ -192,7 +193,7 @@ write_files:
         server worker443 10.56.0.13:443 check
 
   #----------------------------------------------------------
-  # Chrony – tiempo estable
+  # Chrony NTP
   #----------------------------------------------------------
   - path: /etc/chrony.conf
     permissions: "0644"
@@ -218,7 +219,7 @@ runcmd:
   - swapon /swapfile
   - echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
-  # hosts
+  # Hosts
   - /usr/local/bin/set-hosts.sh
 
   # NetworkManager reload
@@ -231,38 +232,39 @@ runcmd:
 
   - sysctl --system
 
-  # resolv.conf coherente con DNS local
+  # resolv.conf coherente
   - rm -f /etc/resolv.conf
   - printf "nameserver 127.0.0.1\nnameserver 10.56.0.10\nsearch okd-lab.okd.local okd.local\n" > /etc/resolv.conf
 
   #----------------------------------------------------------
-  # CoreDNS instalación — FIX DEFINITIVO
+  # CoreDNS instalación — FIX FINAL
   #----------------------------------------------------------
   - mkdir -p /etc/coredns
-  - mkdir -p /usr/local/bin
+  - mkdir -p /opt/coredns
 
+  # descargar binario
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
 
-  # Descomprimir (el tgz contiene SOLO un archivo llamado "coredns")
+  # extraer binario (contenedor único "coredns")
   - tar -xzf /tmp/coredns.tgz -C /tmp
 
-  # Mover binario real
-  - mv /tmp/coredns /usr/local/bin/coredns
+  # mover binario a /opt/coredns (NO /usr/local/bin — bloqueado en AlmaLinux 9 cloud-init)
+  - mv /tmp/coredns /opt/coredns/coredns
 
-  # Permisos + FIX SELinux
-  - chmod +x /usr/local/bin/coredns
-  - restorecon -RF /usr/local/bin
+  - chmod +x /opt/coredns/coredns
+  - restorecon -RF /opt/coredns
 
   - rm -f /tmp/coredns.tgz
 
   #----------------------------------------------------------
-  # SELinux FIX
+  # SELinux ajustes
   #----------------------------------------------------------
   - setsebool -P haproxy_connect_any 1
   - setsebool -P httpd_can_network_connect 1
   - semanage port -a -t http_port_t -p tcp 6443 || true
   - semanage port -a -t http_port_t -p tcp 22623 || true
 
+  # activar servicios
   - systemctl daemon-reload
   - systemctl enable NetworkManager firewalld chronyd coredns haproxy
   - systemctl restart NetworkManager firewalld chronyd coredns haproxy

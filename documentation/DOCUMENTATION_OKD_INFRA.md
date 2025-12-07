@@ -503,9 +503,10 @@ ls -l /etc/coredns
 ls -l /etc/haproxy
 
 # 2) Servicios
+sudo systemctl status chronyd
 sudo systemctl status haproxy
 sudo systemctl status coredns
-sudo systemctl status chronyd
+
 
 # 3) Puertos escuchando
 sudo ss -lntp | egrep '53|80|443|6443|22623'
