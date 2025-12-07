@@ -6,6 +6,8 @@ resource "libvirt_volume" "infra_disk" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
+  # Imagen base AlmaLinux (ruta local o URL)
+  # OJO: var.almalinux_image debe existir y ser legible por libvirtd
   create = {
     content = {
       url = var.almalinux_image
@@ -67,7 +69,11 @@ resource "libvirt_volume" "infra_cloudinit" {
     }
   }
 
-  target = { format = { type = "raw" } }
+  target = {
+    format = {
+      type = "raw"
+    }
+  }
 }
 
 ###############################################
@@ -94,22 +100,30 @@ resource "libvirt_domain" "infra" {
   devices = {
     disks = [
       {
+        # Disco principal de AlmaLinux
         source = {
           volume = {
             pool   = libvirt_volume.infra_disk.pool
             volume = libvirt_volume.infra_disk.name
           }
         }
-        target = { dev = "vda", bus = "virtio" }
+        target = {
+          dev = "vda"
+          bus = "virtio"
+        }
       },
       {
+        # Segundo disco: ISO de cloud-init
         source = {
           volume = {
             pool   = libvirt_volume.infra_cloudinit.pool
             volume = libvirt_volume.infra_cloudinit.name
           }
         }
-        target = { dev = "vdb", bus = "virtio" }
+        target = {
+          dev = "vdb"
+          bus = "virtio"
+        }
       }
     ]
 
@@ -117,21 +131,20 @@ resource "libvirt_domain" "infra" {
       {
         model = { type = "virtio" }
         source = {
-          network = { network = libvirt_network.okd_net.name }
+          network = {
+            network = libvirt_network.okd_net.name
+          }
         }
         mac = { address = var.infra.mac }
       }
     ]
+  }
 
-    graphics = [
-      {
-        type = "vnc"
-        listen = {
-          type    = "address"
-          address = "0.0.0.0"
-        }
-        autoport = true
-      }
-    ]
+  # Consola serie para ver el boot:
+  #   sudo virsh console okd-infra
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
   }
 }
