@@ -85,7 +85,7 @@ write_files:
       dns=none
 
   #----------------------------------------------------------
-  # CoreDNS — Corefile
+  # CoreDNS — Corefile (zona interna + forwarders)
   #----------------------------------------------------------
   - path: /etc/coredns/Corefile
     permissions: "0644"
@@ -98,7 +98,7 @@ write_files:
       }
 
   #----------------------------------------------------------
-  # CoreDNS — Zona interna completa
+  # CoreDNS — Base de zona
   #----------------------------------------------------------
   - path: /etc/coredns/db.okd
     permissions: "0644"
@@ -143,7 +143,7 @@ write_files:
       WantedBy=multi-user.target
 
   #----------------------------------------------------------
-  # HAProxy
+  # HAProxy para OKD
   #----------------------------------------------------------
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
@@ -192,7 +192,7 @@ write_files:
         server worker443 10.56.0.13:443 check
 
   #----------------------------------------------------------
-  # Chrony
+  # Chrony – tiempo estable
   #----------------------------------------------------------
   - path: /etc/chrony.conf
     permissions: "0644"
@@ -211,35 +211,41 @@ write_files:
 
 runcmd:
 
+  # Swap
   - fallocate -l 4G /swapfile
   - chmod 600 /swapfile
   - mkswap /swapfile
   - swapon /swapfile
   - echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
+  # hosts
   - /usr/local/bin/set-hosts.sh
 
+  # NetworkManager reload
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
+  # Paquetes requeridos
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
   - sysctl --system
 
-  #----------------------------------------------------------
   # resolv.conf coherente con DNS local
-  #----------------------------------------------------------
   - rm -f /etc/resolv.conf
   - printf "nameserver 127.0.0.1\nnameserver 10.56.0.10\nsearch okd-lab.okd.local okd.local\n" > /etc/resolv.conf
 
   #----------------------------------------------------------
-  # CoreDNS instalación CORRECTA (tgz → binario real)
+  # CoreDNS instalación CORRECTA
   #----------------------------------------------------------
   - mkdir -p /etc/coredns
   - mkdir -p /usr/local/bin
+
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
-  - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
+
+  - tar -xzf /tmp/coredns.tgz -C /tmp
+
+  - mv /tmp/linux-amd64/coredns /usr/local/bin/coredns
   - chmod +x /usr/local/bin/coredns
   - rm -f /tmp/coredns.tgz
 
@@ -255,6 +261,7 @@ runcmd:
   - systemctl enable NetworkManager firewalld chronyd coredns haproxy
   - systemctl restart NetworkManager firewalld chronyd coredns haproxy
 
+  # Firewall OKD
   - firewall-cmd --permanent --add-port=53/tcp
   - firewall-cmd --permanent --add-port=53/udp
   - firewall-cmd --permanent --add-port=80/tcp
