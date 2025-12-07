@@ -1,21 +1,17 @@
-# terraform/vm-coreos.tf
-
+# terraform\vm-coreos.tf
 ###############################################
 # BASE IMAGE FOR FEDORA COREOS
-# - Provider libvirt v0.9.1 (schema HEAD)
 ###############################################
 resource "libvirt_volume" "coreos_base" {
   name = "fcos-base.qcow2"
   pool = libvirt_pool.okd.name
 
-  # Descarga/usa la imagen base (ruta local o URL)
   create = {
     content = {
       url = var.coreos_image
     }
   }
 
-  # En 0.9.1 el formato va dentro de "target"
   target = {
     format = {
       type = "qcow2"
@@ -29,67 +25,50 @@ resource "libvirt_volume" "coreos_base" {
 resource "libvirt_volume" "bootstrap_disk" {
   name = "bootstrap.qcow2"
   pool = libvirt_pool.okd.name
-
-  # Tamaño virtual del disco (ej. 100GiB)
   capacity = 107374182400
 
   backing_store = {
     path = libvirt_volume.coreos_base.path
-    format = {
-      type = "qcow2"
-    }
+    format = { type = "qcow2" }
   }
 
   target = {
-    format = {
-      type = "qcow2"
-    }
+    format = { type = "qcow2" }
   }
 }
 
 resource "libvirt_volume" "master_disk" {
   name = "master.qcow2"
   pool = libvirt_pool.okd.name
-
   capacity = 107374182400
 
   backing_store = {
     path = libvirt_volume.coreos_base.path
-    format = {
-      type = "qcow2"
-    }
+    format = { type = "qcow2" }
   }
 
   target = {
-    format = {
-      type = "qcow2"
-    }
+    format = { type = "qcow2" }
   }
 }
 
 resource "libvirt_volume" "worker_disk" {
   name = "worker.qcow2"
   pool = libvirt_pool.okd.name
-
   capacity = 107374182400
 
   backing_store = {
     path = libvirt_volume.coreos_base.path
-    format = {
-      type = "qcow2"
-    }
+    format = { type = "qcow2" }
   }
 
   target = {
-    format = {
-      type = "qcow2"
-    }
+    format = { type = "qcow2" }
   }
 }
 
 ###############################################
-# IGNITION (raw) COMO VOLUMEN
-# - libvirt_ignition -> libvirt_volume.create.content.url
+# IGNITION RAW VOLUMES
 ###############################################
 resource "libvirt_ignition" "bootstrap" {
   name    = "bootstrap.ign"
@@ -107,58 +86,62 @@ resource "libvirt_ignition" "worker" {
 }
 
 resource "libvirt_volume" "bootstrap_ignition" {
-  name = "bootstrap.ign"
+  name = "bootstrap-ignition.raw"
   pool = libvirt_pool.okd.name
 
   create = {
-    content = {
-      url = libvirt_ignition.bootstrap.path
-    }
+    content = { url = libvirt_ignition.bootstrap.path }
   }
 
   target = {
-    format = {
-      type = "raw"
-    }
+    format = { type = "raw" }
   }
 }
 
 resource "libvirt_volume" "master_ignition" {
-  name = "master.ign"
+  name = "master-ignition.raw"
   pool = libvirt_pool.okd.name
 
   create = {
-    content = {
-      url = libvirt_ignition.master.path
-    }
+    content = { url = libvirt_ignition.master.path }
   }
 
   target = {
-    format = {
-      type = "raw"
-    }
+    format = { type = "raw" }
   }
 }
 
 resource "libvirt_volume" "worker_ignition" {
-  name = "worker.ign"
+  name = "worker-ignition.raw"
   pool = libvirt_pool.okd.name
 
   create = {
-    content = {
-      url = libvirt_ignition.worker.path
-    }
+    content = { url = libvirt_ignition.worker.path }
   }
 
   target = {
-    format = {
-      type = "raw"
-    }
+    format = { type = "raw" }
   }
 }
 
 ###############################################################
-# BOOTSTRAP NODE (0.9.1 - patrón devices)
+# DOMAIN TEMPLATE FUNCTION
+###############################################################
+locals {
+  domain_os = {
+    type         = "hvm"
+    type_arch    = "x86_64"
+    type_machine = "q35"
+    boot_devices = [{ dev = "hd" }]
+  }
+
+  cpu_conf = {
+    mode = "host-passthrough"
+  }
+}
+
+###############################################################
+# BOOTSTRAP NODE
 ###############################################################
 resource "libvirt_domain" "bootstrap" {
   name      = "okd-bootstrap"
@@ -167,68 +150,46 @@ resource "libvirt_domain" "bootstrap" {
   memory    = var.bootstrap.memory
   autostart = true
 
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = [{
-      dev = "hd"
-    }]
-  }
-
-  cpu = {
-    mode = "host-passthrough"
-  }
+  os  = local.domain_os
+  cpu = local.cpu_conf
 
   devices = {
-  disks = [
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.bootstrap_disk.pool
-          volume = libvirt_volume.bootstrap_disk.name
+    disks = [
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.bootstrap_disk.pool
+            volume = libvirt_volume.bootstrap_disk.name
+          }
         }
-      }
-      target = {
-        dev = "vda"
-        bus = "virtio"
-      }
-    },
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.bootstrap_ignition.pool
-          volume = libvirt_volume.bootstrap_ignition.name
+        target = { dev = "vda", bus = "virtio" }
+      },
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.bootstrap_ignition.pool
+            volume = libvirt_volume.bootstrap_ignition.name
+          }
         }
+        target = { dev = "vdb", bus = "virtio" }
       }
-      target = {
-        dev = "vdb"
-        bus = "virtio"
-      }
-    }
-  ]
+    ]
 
-  interfaces = [
-    {
-      model = { type = "virtio" }
-      source = {
-        network = {
-          network = libvirt_network.okd_net.name
-        }
+    interfaces = [
+      {
+        model = { type = "virtio" }
+        source = { network = { network = libvirt_network.okd_net.name } }
+        mac = { address = var.bootstrap.mac }
       }
-      mac = {
-        address = var.bootstrap.mac
-      }
-    }
-  ]
+    ]
 
-  graphics = [{
-    type     = "vnc"
-    listen   = "0.0.0.0"
-    autoport = true
-  }]
+    graphics = [{
+      type     = "vnc"
+      listen   = "0.0.0.0"
+      autoport = true
+    }]
+  }
 }
-
 
 ###############################################################
 # MASTER NODE
@@ -240,65 +201,45 @@ resource "libvirt_domain" "master" {
   memory    = var.master.memory
   autostart = true
 
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = [{
-      dev = "hd"
+  os  = local.domain_os
+  cpu = local.cpu_conf
+
+  devices = {
+    disks = [
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.master_disk.pool
+            volume = libvirt_volume.master_disk.name
+          }
+        }
+        target = { dev = "vda", bus = "virtio" }
+      },
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.master_ignition.pool
+            volume = libvirt_volume.master_ignition.name
+          }
+        }
+        target = { dev = "vdb", bus = "virtio" }
+      }
+    ]
+
+    interfaces = [
+      {
+        model = { type = "virtio" }
+        source = { network = { network = libvirt_network.okd_net.name } }
+        mac = { address = var.master.mac }
+      }
+    ]
+
+    graphics = [{
+      type     = "vnc"
+      listen   = "0.0.0.0"
+      autoport = true
     }]
   }
-
-  cpu = {
-    mode = "host-passthrough"
-  }
-devices = {
-  disks = [
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.bootstrap_disk.pool
-          volume = libvirt_volume.bootstrap_disk.name
-        }
-      }
-      target = {
-        dev = "vda"
-        bus = "virtio"
-      }
-    },
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.bootstrap_ignition.pool
-          volume = libvirt_volume.bootstrap_ignition.name
-        }
-      }
-      target = {
-        dev = "vdb"
-        bus = "virtio"
-      }
-    }
-  ]
-
-  interfaces = [
-    {
-      model = { type = "virtio" }
-      source = {
-        network = {
-          network = libvirt_network.okd_net.name
-        }
-      }
-      mac = {
-        address = var.bootstrap.mac
-      }
-    }
-  ]
-
-  graphics = [{
-    type     = "vnc"
-    listen   = "0.0.0.0"
-    autoport = true
-  }]
 }
 
 ###############################################################
@@ -311,63 +252,43 @@ resource "libvirt_domain" "worker" {
   memory    = var.worker.memory
   autostart = true
 
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = [{
-      dev = "hd"
+  os  = local.domain_os
+  cpu = local.cpu_conf
+
+  devices = {
+    disks = [
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.worker_disk.pool
+            volume = libvirt_volume.worker_disk.name
+          }
+        }
+        target = { dev = "vda", bus = "virtio" }
+      },
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.worker_ignition.pool
+            volume = libvirt_volume.worker_ignition.name
+          }
+        }
+        target = { dev = "vdb", bus = "virtio" }
+      }
+    ]
+
+    interfaces = [
+      {
+        model = { type = "virtio" }
+        source = { network = { network = libvirt_network.okd_net.name } }
+        mac = { address = var.worker.mac }
+      }
+    ]
+
+    graphics = [{
+      type     = "vnc"
+      listen   = "0.0.0.0"
+      autoport = true
     }]
   }
-
-  cpu = {
-    mode = "host-passthrough"
-  }
-devices = {
-  disks = [
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.bootstrap_disk.pool
-          volume = libvirt_volume.bootstrap_disk.name
-        }
-      }
-      target = {
-        dev = "vda"
-        bus = "virtio"
-      }
-    },
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.bootstrap_ignition.pool
-          volume = libvirt_volume.bootstrap_ignition.name
-        }
-      }
-      target = {
-        dev = "vdb"
-        bus = "virtio"
-      }
-    }
-  ]
-
-  interfaces = [
-    {
-      model = { type = "virtio" }
-      source = {
-        network = {
-          network = libvirt_network.okd_net.name
-        }
-      }
-      mac = {
-        address = var.bootstrap.mac
-      }
-    }
-  ]
-
-  graphics = [{
-    type     = "vnc"
-    listen   = "0.0.0.0"
-    autoport = true
-  }]
 }
