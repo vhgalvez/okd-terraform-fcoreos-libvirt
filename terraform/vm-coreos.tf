@@ -1,4 +1,3 @@
-# terraform/vm-coreos.tf
 ###############################################
 # BASE IMAGE FOR FEDORA COREOS
 ###############################################
@@ -88,7 +87,6 @@ resource "libvirt_volume" "bootstrap_ignition" {
   pool = libvirt_pool.okd.name
 
   create = { content = { url = libvirt_ignition.bootstrap.path } }
-
   target = { format = { type = "raw" } }
 }
 
@@ -97,7 +95,6 @@ resource "libvirt_volume" "master_ignition" {
   pool = libvirt_pool.okd.name
 
   create = { content = { url = libvirt_ignition.master.path } }
-
   target = { format = { type = "raw" } }
 }
 
@@ -106,7 +103,6 @@ resource "libvirt_volume" "worker_ignition" {
   pool = libvirt_pool.okd.name
 
   create = { content = { url = libvirt_ignition.worker.path } }
-
   target = { format = { type = "raw" } }
 }
 
@@ -138,37 +134,27 @@ resource "libvirt_domain" "bootstrap" {
 
   os  = local.domain_os
   cpu = local.cpu_conf
-devices = {
-  disks = [
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.bootstrap_disk.pool
-          volume = libvirt_volume.bootstrap_disk.name
-        }
-      }
-      target = { dev = "vda", bus = "virtio" }
-    },
-    {
-      source = {
-        volume = {
-          pool   = libvirt_volume.bootstrap_ignition.pool
-          volume = libvirt_volume.bootstrap_ignition.name
-        }
-      }
-      target = { dev = "vdb", bus = "virtio" }
-    }
-  ]
 
-  interfaces = [
-    {
-      model = { type = "virtio" }
-      source = {
-        network = { network = libvirt_network.okd_net.name }
+  devices = {
+    disks = [
+      {
+        source = { volume = { pool = libvirt_volume.bootstrap_disk.pool, volume = libvirt_volume.bootstrap_disk.name } }
+        target = { dev = "vda", bus = "virtio" }
+      },
+      {
+        source = { volume = { pool = libvirt_volume.bootstrap_ignition.pool, volume = libvirt_volume.bootstrap_ignition.name } }
+        target = { dev = "vdb", bus = "virtio" }
       }
-      mac = { address = var.bootstrap.mac }
-    }
-  ]
+    ]
+
+    interfaces = [
+      {
+        model  = { type = "virtio" }
+        source = { network = { network = libvirt_network.okd_net.name } }
+        mac    = { address = var.bootstrap.mac }
+      }
+    ]
+  }
 
   graphics = [{
     type     = "vnc"
@@ -176,7 +162,6 @@ devices = {
     listen   = "0.0.0.0"
   }]
 }
-
 
 ###############################################
 # MASTER NODE
@@ -210,7 +195,9 @@ resource "libvirt_domain" "master" {
         mac    = { address = var.master.mac }
       }
     ]
- graphics = [{
+  }
+
+  graphics = [{
     type     = "vnc"
     autoport = true
     listen   = "0.0.0.0"
@@ -249,6 +236,8 @@ resource "libvirt_domain" "worker" {
         mac    = { address = var.worker.mac }
       }
     ]
+  }
+
   graphics = [{
     type     = "vnc"
     autoport = true
