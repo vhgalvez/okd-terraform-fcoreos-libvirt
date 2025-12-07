@@ -23,7 +23,7 @@ ssh_keys = [
 # ================================
 infra = {
   cpus     = 1
-  memory   = 2048
+  memory   = 3072
   ip       = "10.56.0.10"
   hostname = "infra.okd.local"
 }
