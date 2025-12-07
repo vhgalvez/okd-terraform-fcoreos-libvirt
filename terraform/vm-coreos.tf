@@ -138,44 +138,45 @@ resource "libvirt_domain" "bootstrap" {
 
   os  = local.domain_os
   cpu = local.cpu_conf
-
-  devices = {
-    disks = [
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.bootstrap_disk.pool
-            volume = libvirt_volume.bootstrap_disk.name
-          }
+devices = {
+  disks = [
+    {
+      source = {
+        volume = {
+          pool   = libvirt_volume.bootstrap_disk.pool
+          volume = libvirt_volume.bootstrap_disk.name
         }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.bootstrap_ignition.pool
-            volume = libvirt_volume.bootstrap_ignition.name
-          }
-        }
-        target = { dev = "vdb", bus = "virtio" }
       }
-    ]
-
-    interfaces = [
-      {
-        model = { type = "virtio" }
-        source = {
-          network = { network = libvirt_network.okd_net.name }
+      target = { dev = "vda", bus = "virtio" }
+    },
+    {
+      source = {
+        volume = {
+          pool   = libvirt_volume.bootstrap_ignition.pool
+          volume = libvirt_volume.bootstrap_ignition.name
         }
-        mac = { address = var.bootstrap.mac }
       }
-    ]
- graphics = [{
+      target = { dev = "vdb", bus = "virtio" }
+    }
+  ]
+
+  interfaces = [
+    {
+      model = { type = "virtio" }
+      source = {
+        network = { network = libvirt_network.okd_net.name }
+      }
+      mac = { address = var.bootstrap.mac }
+    }
+  ]
+
+  graphics = [{
     type     = "vnc"
-    listen   = "0.0.0.0"
     autoport = true
+    listen   = "0.0.0.0"
   }]
 }
+
 
 ###############################################
 # MASTER NODE
@@ -209,7 +210,11 @@ resource "libvirt_domain" "master" {
         mac    = { address = var.master.mac }
       }
     ]
-  }
+ graphics = [{
+    type     = "vnc"
+    autoport = true
+    listen   = "0.0.0.0"
+  }]
 }
 
 ###############################################
@@ -244,5 +249,9 @@ resource "libvirt_domain" "worker" {
         mac    = { address = var.worker.mac }
       }
     ]
-  }
+  graphics = [{
+    type     = "vnc"
+    autoport = true
+    listen   = "0.0.0.0"
+  }]
 }
