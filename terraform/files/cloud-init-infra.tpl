@@ -236,17 +236,23 @@ runcmd:
   - printf "nameserver 127.0.0.1\nnameserver 10.56.0.10\nsearch okd-lab.okd.local okd.local\n" > /etc/resolv.conf
 
   #----------------------------------------------------------
-  # CoreDNS instalación CORRECTA
+  # CoreDNS instalación — FIX DEFINITIVO
   #----------------------------------------------------------
   - mkdir -p /etc/coredns
   - mkdir -p /usr/local/bin
 
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
 
+  # Descomprimir (el tgz contiene SOLO un archivo llamado "coredns")
   - tar -xzf /tmp/coredns.tgz -C /tmp
 
-  - mv /tmp/linux-amd64/coredns /usr/local/bin/coredns
+  # Mover binario real
+  - mv /tmp/coredns /usr/local/bin/coredns
+
+  # Permisos + FIX SELinux
   - chmod +x /usr/local/bin/coredns
+  - restorecon -RF /usr/local/bin
+
   - rm -f /tmp/coredns.tgz
 
   #----------------------------------------------------------
