@@ -1,5 +1,4 @@
 # terraform/vm-coreos.tf
-
 ###############################################
 # BASE IMAGE FOR FEDORA COREOS
 ###############################################
@@ -7,15 +6,16 @@ resource "libvirt_volume" "coreos_base" {
   name = "fcos-base.qcow2"
   pool = libvirt_pool.okd.name
 
+  # Usa la imagen local de Fedora CoreOS
+  # OJO: var.coreos_image debe existir y ser legible por libvirtd
   create = {
     content = {
       url = var.coreos_image
     }
   }
-  
-  # ✅ CORRECCIÓN: 'format' como string simple en target.
-  target {
-    format = "qcow2" 
+
+  target = {
+    format = { type = "qcow2" }
   }
 }
 
@@ -27,13 +27,13 @@ resource "libvirt_volume" "bootstrap_disk" {
   pool     = libvirt_pool.okd.name
   capacity = 107374182400 # 100GiB
 
-  backing_store {
+  backing_store = {
     path   = libvirt_volume.coreos_base.path
-    format = "qcow2"
+    format = { type = "qcow2" }
   }
 
-  target {
-    format = "qcow2"
+  target = {
+    format = { type = "qcow2" }
   }
 }
 
@@ -42,13 +42,13 @@ resource "libvirt_volume" "master_disk" {
   pool     = libvirt_pool.okd.name
   capacity = 107374182400
 
-  backing_store {
+  backing_store = {
     path   = libvirt_volume.coreos_base.path
-    format = "qcow2"
+    format = { type = "qcow2" }
   }
 
-  target {
-    format = "qcow2"
+  target = {
+    format = { type = "qcow2" }
   }
 }
 
@@ -57,13 +57,13 @@ resource "libvirt_volume" "worker_disk" {
   pool     = libvirt_pool.okd.name
   capacity = 107374182400
 
-  backing_store {
+  backing_store = {
     path   = libvirt_volume.coreos_base.path
-    format = "qcow2"
+    format = { type = "qcow2" }
   }
 
-  target {
-    format = "qcow2"
+  target = {
+    format = { type = "qcow2" }
   }
 }
 
@@ -89,24 +89,39 @@ resource "libvirt_volume" "bootstrap_ignition" {
   name = "bootstrap-ignition.raw"
   pool = libvirt_pool.okd.name
 
-  create { content = { url = libvirt_ignition.bootstrap.path } }
-  target { format = "raw" }
+  create = {
+    content = { url = libvirt_ignition.bootstrap.path }
+  }
+
+  target = {
+    format = { type = "raw" }
+  }
 }
 
 resource "libvirt_volume" "master_ignition" {
   name = "master-ignition.raw"
   pool = libvirt_pool.okd.name
 
-  create { content = { url = libvirt_ignition.master.path } }
-  target { format = "raw" }
+  create = {
+    content = { url = libvirt_ignition.master.path }
+  }
+
+  target = {
+    format = { type = "raw" }
+  }
 }
 
 resource "libvirt_volume" "worker_ignition" {
   name = "worker-ignition.raw"
   pool = libvirt_pool.okd.name
 
-  create { content = { url = libvirt_ignition.worker.path } }
-  target { format = "raw" }
+  create = {
+    content = { url = libvirt_ignition.worker.path }
+  }
+
+  target = {
+    format = { type = "raw" }
+  }
 }
 
 ###############################################
@@ -138,42 +153,38 @@ resource "libvirt_domain" "bootstrap" {
   os  = local.domain_os
   cpu = local.cpu_conf
 
-  devices { # ✅ AJUSTADO: devices como bloque (sin el signo = )
-    disk {
-      source {
-        volume {
-          pool   = libvirt_volume.bootstrap_disk.pool
-          volume = libvirt_volume.bootstrap_disk.name
-        }
+  devices = {
+    disks = [
+      {
+        source = { volume = { pool = libvirt_volume.bootstrap_disk.pool, volume = libvirt_volume.bootstrap_disk.name } }
+        target = { dev = "vda", bus = "virtio" }
+      },
+      {
+        source = { volume = { pool = libvirt_volume.bootstrap_ignition.pool, volume = libvirt_volume.bootstrap_ignition.name } }
+        target = { dev = "vdb", bus = "virtio" }
       }
-      target { dev = "vda", bus = "virtio" }
-    }
-    disk {
-      source {
-        volume {
-          pool   = libvirt_volume.bootstrap_ignition.pool
-          volume = libvirt_volume.bootstrap_ignition.name
-        }
-      }
-      target { dev = "vdb", bus = "virtio" }
-    }
+    ]
 
-    interface {
-      model { type = "virtio" }
-      source {
-        network { network = libvirt_network.okd_net.name }
+    interfaces = [
+      {
+        model  = { type = "virtio" }
+        source = { network = { network = libvirt_network.okd_net.name } }
+        mac    = { address = var.bootstrap.mac }
       }
-      mac { address = var.bootstrap.mac }
-    }
-    
-    # ✅ CORRECCIÓN 1: console se mueve dentro del bloque devices
-    console {
-      type        = "pty"
-      target_type = "serial"
-      target_port = "0"
-    }
+    ]
+
+    consoles = [
+      {
+        type        = "pty"
+        target_type = "serial"
+        target_port = "0"
+      }
+    ]
+
+    # OPCIONAL: NO USAMOS graphics porque causa bugs en el provider
   }
 }
+
 
 ###############################################
 # MASTER NODE
@@ -188,28 +199,43 @@ resource "libvirt_domain" "master" {
   os  = local.domain_os
   cpu = local.cpu_conf
 
-  devices {
-    disk {
-      source { volume { pool = libvirt_volume.master_disk.pool, volume = libvirt_volume.master_disk.name } }
-      target { dev = "vda", bus = "virtio" }
-    }
-    disk {
-      source { volume = { pool = libvirt_volume.master_ignition.pool, volume = libvirt_volume.master_ignition.name } }
-      target { dev = "vdb", bus = "virtio" }
-    }
+  devices = {
+    disks = [
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.master_disk.pool
+            volume = libvirt_volume.master_disk.name
+          }
+        }
+        target = { dev = "vda", bus = "virtio" }
+      },
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.master_ignition.pool
+            volume = libvirt_volume.master_ignition.name
+          }
+        }
+        target = { dev = "vdb", bus = "virtio" }
+      }
+    ]
 
-    interface {
-      model { type = "virtio" }
-      source { network = { network = libvirt_network.okd_net.name } }
-      mac { address = var.master.mac }
-    }
+    interfaces = [
+      {
+        model = { type = "virtio" }
+        source = {
+          network = { network = libvirt_network.okd_net.name }
+        }
+        mac = { address = var.master.mac }
+      }
+    ]
+  }
 
-    # ✅ CORRECCIÓN 1: console se mueve dentro del bloque devices
-    console {
-      type        = "pty"
-      target_type = "serial"
-      target_port = "0"
-    }
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
   }
 }
 
@@ -226,27 +252,42 @@ resource "libvirt_domain" "worker" {
   os  = local.domain_os
   cpu = local.cpu_conf
 
-  devices {
-    disk {
-      source { volume { pool = libvirt_volume.worker_disk.pool, volume = libvirt_volume.worker_disk.name } }
-      target { dev = "vda", bus = "virtio" }
-    }
-    disk {
-      source { volume = { pool = libvirt_volume.worker_ignition.pool, volume = libvirt_volume.worker_ignition.name } }
-      target { dev = "vdb", bus = "virtio" }
-    }
+  devices = {
+    disks = [
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.worker_disk.pool
+            volume = libvirt_volume.worker_disk.name
+          }
+        }
+        target = { dev = "vda", bus = "virtio" }
+      },
+      {
+        source = {
+          volume = {
+            pool   = libvirt_volume.worker_ignition.pool
+            volume = libvirt_volume.worker_ignition.name
+          }
+        }
+        target = { dev = "vdb", bus = "virtio" }
+      }
+    ]
 
-    interface {
-      model { type = "virtio" }
-      source { network = { network = libvirt_network.okd_net.name } }
-      mac { address = var.worker.mac }
-    }
+    interfaces = [
+      {
+        model = { type = "virtio" }
+        source = {
+          network = { network = libvirt_network.okd_net.name }
+        }
+        mac = { address = var.worker.mac }
+      }
+    ]
+  }
 
-    # ✅ CORRECCIÓN 1: console se mueve dentro del bloque devices
-    console {
-      type        = "pty"
-      target_type = "serial"
-      target_port = "0"
-    }
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
   }
 }
