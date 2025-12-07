@@ -116,3 +116,7 @@ variable "timezone" {
   type        = string
   default     = "UTC"
 }
+variable "cluster_name" {
+  description = "Nombre del cluster OKD (usado en FQDN internos)"
+  type        = string
+}
