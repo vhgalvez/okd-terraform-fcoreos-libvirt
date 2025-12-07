@@ -155,13 +155,18 @@ resource "libvirt_domain" "bootstrap" {
         mac    = { address = var.bootstrap.mac }
       }
     ]
-  }
 
-  graphics = [{
-    type     = "vnc"
-    autoport = true
-    listen   = "0.0.0.0"
-  }]
+    graphics = [
+      {
+        type = "vnc"
+        listen = {
+          type    = "address"
+          address = "0.0.0.0"
+        }
+        autoport = true
+      }
+    ]
+  }
 }
 
 ###############################################
@@ -196,13 +201,18 @@ resource "libvirt_domain" "master" {
         mac    = { address = var.master.mac }
       }
     ]
-  }
 
-  graphics = [{
-    type     = "vnc"
-    autoport = true
-    listen   = "0.0.0.0"
-  }]
+    graphics = [
+      {
+        type = "vnc"
+        listen = {
+          type    = "address"
+          address = "0.0.0.0"
+        }
+        autoport = true
+      }
+    ]
+  }
 }
 
 ###############################################
@@ -237,11 +247,16 @@ resource "libvirt_domain" "worker" {
         mac    = { address = var.worker.mac }
       }
     ]
-  }
 
-  graphics = [{
-    type     = "vnc"
-    autoport = true
-    listen   = "0.0.0.0"
-  }]
+    graphics = [
+      {
+        type = "vnc"
+        listen = {
+          type    = "address"
+          address = "0.0.0.0"
+        }
+        autoport = true
+      }
+    ]
+  }
 }
