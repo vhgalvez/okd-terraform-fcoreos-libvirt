@@ -1,4 +1,4 @@
-# terraform\vm-coreos.tf
+# terraform/vm-coreos.tf
 ###############################################
 # BASE IMAGE FOR FEDORA COREOS
 ###############################################
@@ -152,44 +152,47 @@ resource "libvirt_domain" "bootstrap" {
 
   os  = local.domain_os
   cpu = local.cpu_conf
-
-  devices = {
-    disks = [
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.bootstrap_disk.pool
-            volume = libvirt_volume.bootstrap_disk.name
-          }
+devices = {
+  disks = [
+    {
+      source = {
+        volume = {
+          pool   = libvirt_volume.bootstrap_disk.pool
+          volume = libvirt_volume.bootstrap_disk.name
         }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.bootstrap_ignition.pool
-            volume = libvirt_volume.bootstrap_ignition.name
-          }
+      }
+      target = {
+        dev = "vda"
+        bus = "virtio"
+      }
+    },
+    {
+      source = {
+        volume = {
+          pool   = libvirt_volume.bootstrap_ignition.pool
+          volume = libvirt_volume.bootstrap_ignition.name
         }
-        target = { dev = "vdb", bus = "virtio" }
       }
-    ]
-
-    interfaces = [
-      {
-        model = { type = "virtio" }
-        source = { network = { network = libvirt_network.okd_net.name } }
-        mac = { address = var.bootstrap.mac }
+      target = {
+        dev = "vdb"
+        bus = "virtio"
       }
-    ]
+    }
+  ]
 
-    graphics = [{
-      type     = "vnc"
-      listen   = "0.0.0.0"
-      autoport = true
-    }]
-  }
+  interfaces = [
+    {
+      model = { type = "virtio" }
+      source = {
+        network = {
+          network = libvirt_network.okd_net.name
+        }
+      }
+      mac = { address = var.bootstrap.mac }
+    }
+  ]
 }
+
 
 ###############################################################
 # MASTER NODE
@@ -204,42 +207,45 @@ resource "libvirt_domain" "master" {
   os  = local.domain_os
   cpu = local.cpu_conf
 
-  devices = {
-    disks = [
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.master_disk.pool
-            volume = libvirt_volume.master_disk.name
-          }
+devices = {
+  disks = [
+    {
+      source = {
+        volume = {
+          pool   = libvirt_volume.master_disk.pool
+          volume = libvirt_volume.master_disk.name
         }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.master_ignition.pool
-            volume = libvirt_volume.master_ignition.name
-          }
+      }
+      target = {
+        dev = "vda"
+        bus = "virtio"
+      }
+    },
+    {
+      source = {
+        volume = {
+          pool   = libvirt_volume.master_ignition.pool
+          volume = libvirt_volume.master_ignition.name
         }
-        target = { dev = "vdb", bus = "virtio" }
       }
-    ]
-
-    interfaces = [
-      {
-        model = { type = "virtio" }
-        source = { network = { network = libvirt_network.okd_net.name } }
-        mac = { address = var.master.mac }
+      target = {
+        dev = "vdb"
+        bus = "virtio"
       }
-    ]
+    }
+  ]
 
-    graphics = [{
-      type     = "vnc"
-      listen   = "0.0.0.0"
-      autoport = true
-    }]
-  }
+  interfaces = [
+    {
+      model = { type = "virtio" }
+      source = {
+        network = {
+          network = libvirt_network.okd_net.name
+        }
+      }
+      mac = { address = var.master.mac }
+    }
+  ]
 }
 
 ###############################################################
@@ -256,39 +262,42 @@ resource "libvirt_domain" "worker" {
   cpu = local.cpu_conf
 
   devices = {
-    disks = [
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.worker_disk.pool
-            volume = libvirt_volume.worker_disk.name
-          }
+  disks = [
+    {
+      source = {
+        volume = {
+          pool   = libvirt_volume.worker_disk.pool
+          volume = libvirt_volume.worker_disk.name
         }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.worker_ignition.pool
-            volume = libvirt_volume.worker_ignition.name
-          }
+      }
+      target = {
+        dev = "vda"
+        bus = "virtio"
+      }
+    },
+    {
+      source = {
+        volume = {
+          pool   = libvirt_volume.worker_ignition.pool
+          volume = libvirt_volume.worker_ignition.name
         }
-        target = { dev = "vdb", bus = "virtio" }
       }
-    ]
-
-    interfaces = [
-      {
-        model = { type = "virtio" }
-        source = { network = { network = libvirt_network.okd_net.name } }
-        mac = { address = var.worker.mac }
+      target = {
+        dev = "vdb"
+        bus = "virtio"
       }
-    ]
+    }
+  ]
 
-    graphics = [{
-      type     = "vnc"
-      listen   = "0.0.0.0"
-      autoport = true
-    }]
-  }
+  interfaces = [
+    {
+      model = { type = "virtio" }
+      source = {
+        network = {
+          network = libvirt_network.okd_net.name
+        }
+      }
+      mac = { address = var.worker.mac }
+    }
+  ]
 }
