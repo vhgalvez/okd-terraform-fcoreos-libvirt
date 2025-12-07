@@ -19,6 +19,10 @@ resource "libvirt_volume" "infra_disk_infra" {
       type = "qcow2"
     }
   }
+
+  lifecycle {
+    ignore_exists = true
+  }
 }
 
 ###############################################
@@ -73,6 +77,10 @@ resource "libvirt_volume" "infra_cloudinit_infra" {
     format = {
       type = "raw"
     }
+  }
+
+  lifecycle {
+    ignore_exists = true
   }
 }
 
