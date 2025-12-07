@@ -26,7 +26,7 @@ provider "libvirt" {
 
 #############################################
 #         LIBVIRT POOL PARA OKD
-#   (CORREGIDO: using target.path)
+#    Almacenará discos e Ignitions
 #############################################
 resource "libvirt_pool" "okd" {
   name = "okd"

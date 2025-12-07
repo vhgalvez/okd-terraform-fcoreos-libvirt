@@ -1,17 +1,17 @@
 # terraform/network.tf
 resource "libvirt_network" "okd_net" {
-  name   = var.network_name
-  mode   = "nat"
-  bridge = "virbr_okd"
+  name      = var.network_name
+  mode      = "nat"
+  bridge    = "virbr_okd"
 
-  # Dominio REAL del cluster
-  domain = "${var.cluster_name}.${var.cluster_domain}" # okd.okd.local
+  # Dominio real del cluster → okd.okd.local
+  domain    = "${var.cluster_name}.${var.cluster_domain}"
 
   addresses = [var.network_cidr]
   autostart = true
 
   dhcp {
-    enabled = true # Puede quedar así, no molesta
+    enabled = true
   }
 
   dns {
@@ -19,8 +19,8 @@ resource "libvirt_network" "okd_net" {
     local_only = false
 
     forwarders {
-      # CoreDNS interno
-      address = var.infra.ip # 10.56.0.10
+      # CoreDNS interno (IP fija del nodo infra)
+      address = var.infra_ip
     }
   }
 }

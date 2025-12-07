@@ -120,3 +120,8 @@ variable "cluster_name" {
   description = "Nombre del cluster OKD (usado en FQDN internos)"
   type        = string
 }
+
+variable "infra_ip" {
+  description = "IP del servidor infra (DNS + NTP)"
+  type        = string
+}

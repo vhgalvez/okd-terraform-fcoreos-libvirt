@@ -32,7 +32,7 @@ resize_rootfs: true
 write_files:
 
   #────────────────────────────────────────────────────────
-  # NetworkManager — IP fija + DNS híbrido
+  # NetworkManager — IP fija + DNS interno OKD
   #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
@@ -47,7 +47,7 @@ write_files:
       method=manual
       address1=${ip}/24,${gateway}
       dns=${dns1};${dns2}
-      dns-search=${cluster_name}.${cluster_domain}
+      dns-search=${cluster_fqdn}
       may-fail=false
       route-metric=10
 
@@ -67,7 +67,7 @@ write_files:
       echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
   #────────────────────────────────────────────────────────
-  # sysctl — necesario para OKD
+  # sysctl (OKD requiere esto)
   #────────────────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
@@ -76,7 +76,7 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
 
   #────────────────────────────────────────────────────────
-  # NetworkManager — no tocar resolv.conf
+  # NetworkManager — impedir override de resolv.conf
   #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
@@ -85,12 +85,12 @@ write_files:
       dns=none
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — Corefile (zona okd.okd.local)
+  # CoreDNS — Corefile (zona completa okd.okd.local)
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
-      ${cluster_name}.${cluster_domain} {
+      ${cluster_fqdn} {
         file /etc/coredns/db.okd
       }
       . {
@@ -98,20 +98,20 @@ write_files:
       }
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — Zona interna OKD
+  # CoreDNS — Base de zona correcta para OKD
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
-      $ORIGIN ${cluster_name}.${cluster_domain}.
-      @   IN  SOA dns.${cluster_name}.${cluster_domain}. admin.${cluster_name}.${cluster_domain}. (
+      $ORIGIN ${cluster_fqdn}.
+      @   IN  SOA dns.${cluster_fqdn}. admin.${cluster_fqdn}. (
               2025010101
               7200
               3600
               1209600
               3600 )
-      @       IN NS dns.${cluster_name}.${cluster_domain}.
-      dns     IN A ${ip}
+      @       IN NS dns.${cluster_fqdn}.
+      dns         IN A ${ip}
 
       api         IN A 10.56.0.11
       api-int     IN A 10.56.0.11
@@ -123,7 +123,7 @@ write_files:
       *.apps      IN A 10.56.0.13
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — systemd unit
+  # CoreDNS — systemd service
   #────────────────────────────────────────────────────────
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
@@ -142,7 +142,7 @@ write_files:
       WantedBy=multi-user.target
 
   #────────────────────────────────────────────────────────
-  # HAProxy — para OKD
+  # HAProxy correcto para OKD
   #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
@@ -190,20 +190,6 @@ write_files:
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
 
-  #────────────────────────────────────────────────────────
-  # Chrony NTP
-  #────────────────────────────────────────────────────────
-  - path: /etc/chrony.conf
-    permissions: "0644"
-    content: |
-      server 10.56.0.11 iburst prefer
-      allow 10.56.0.0/24
-      driftfile /var/lib/chrony/drift
-      makestep 1.0 3
-      server 0.pool.ntp.org iburst
-      server 1.pool.ntp.org iburst
-      server 2.pool.ntp.org iburst
-
 ###########################################################
 # RUNCMD
 ###########################################################
@@ -220,7 +206,7 @@ runcmd:
   # Hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Reload network
+  # Network reload
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
@@ -228,27 +214,26 @@ runcmd:
   # Paquetes necesarios
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
-  # sysctl
   - sysctl --system
 
-  # resolv.conf híbrido (NO rompe curl)
+  # resolv.conf CORRECTO
   - rm -f /etc/resolv.conf
-  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
+  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_fqdn}\n" > /etc/resolv.conf
 
-  # CoreDNS — instalación
+  # CoreDNS instalación
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - chmod +x /usr/local/bin/coredns
   - rm -f /tmp/coredns.tgz
 
-  # SELinux ajustes
+  # SELinux
   - setsebool -P haproxy_connect_any 1
   - setsebool -P httpd_can_network_connect 1
   - semanage port -a -t http_port_t -p tcp 6443 || true
   - semanage port -a -t http_port_t -p tcp 22623 || true
 
-  # Enable services
+  # Servicios
   - systemctl daemon-reload
   - systemctl enable NetworkManager firewalld chronyd coredns haproxy
   - systemctl restart NetworkManager firewalld chronyd coredns haproxy
