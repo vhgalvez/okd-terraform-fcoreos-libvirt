@@ -1,5 +1,4 @@
 # terraform/vm-infra.tf
-
 ###############################################
 # DISCO DEL NODO INFRA (AlmaLinux)
 ###############################################
@@ -7,7 +6,6 @@ resource "libvirt_volume" "infra_disk" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
-  # Imagen base AlmaLinux (ruta local o URL)
   create = {
     content = {
       url = var.almalinux_image
@@ -22,7 +20,7 @@ resource "libvirt_volume" "infra_disk" {
 }
 
 ###############################################
-# CLOUD-INIT DEL NODO INFRA (template_file)
+# CLOUD-INIT TEMPLATE
 ###############################################
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
@@ -47,7 +45,7 @@ data "template_file" "infra_cloud_init" {
 }
 
 ###############################################
-# CLOUD-INIT ISO (libvirt_cloudinit_disk + volume)
+# CLOUD-INIT ISO (libvirt_cloudinit_disk)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
@@ -77,7 +75,7 @@ resource "libvirt_volume" "infra_cloudinit" {
 }
 
 ###############################################
-# DEFINICIÓN DE LA VM INFRA (HAProxy + CoreDNS)
+# VM INFRA (HAProxy + CoreDNS)
 ###############################################
 resource "libvirt_domain" "infra" {
   name      = "okd-infra"
@@ -94,9 +92,7 @@ resource "libvirt_domain" "infra" {
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
-    boot_devices = [{
-      dev = "hd"
-    }]
+    boot_devices = [{ dev = "hd" }]
   }
 
   devices = {
@@ -108,10 +104,7 @@ resource "libvirt_domain" "infra" {
             volume = libvirt_volume.infra_disk.name
           }
         }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
+        target = { dev = "vda", bus = "virtio" }
       },
       {
         source = {
@@ -120,10 +113,7 @@ resource "libvirt_domain" "infra" {
             volume = libvirt_volume.infra_cloudinit.name
           }
         }
-        target = {
-          dev = "vdb"
-          bus = "virtio"
-        }
+        target = { dev = "vdb", bus = "virtio" }
       }
     ]
 
@@ -135,15 +125,16 @@ resource "libvirt_domain" "infra" {
             network = libvirt_network.okd_net.name
           }
         }
-        mac = var.infra.mac
+        mac = {
+          address = var.infra.mac
+        }
       }
     ]
 
-    graphics = {
-      vnc = {
-        listen   = "0.0.0.0"
-        autoport = true
-      }
-    }
+    graphics = [{
+      type     = "vnc"
+      listen   = "0.0.0.0"
+      autoport = true
+    }]
   }
 }
