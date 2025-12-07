@@ -209,11 +209,12 @@ resource "libvirt_domain" "master" {
         mac    = { address = var.master.mac }
       }
     ]
- graphics = [{
-    type     = "vnc"
-    autoport = true
-    listen   = "0.0.0.0"
-  }]
+    graphics = [{
+      type     = "vnc"
+      autoport = true
+      listen   = "0.0.0.0"
+    }]
+  }
 }
 
 ###############################################
