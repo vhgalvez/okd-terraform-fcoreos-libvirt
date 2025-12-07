@@ -53,7 +53,6 @@ resource "libvirt_network" "okd_net" {
   dns = {
     enabled    = true
     local_only = false
-
     forwarders = [{
       address = var.infra_ip
     }]

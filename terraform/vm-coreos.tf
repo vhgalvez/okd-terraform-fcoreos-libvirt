@@ -1,4 +1,5 @@
 # terraform/vm-coreos.tf
+
 ###############################################
 # BASE IMAGE FOR FEDORA COREOS
 ###############################################
@@ -53,7 +54,7 @@ resource "libvirt_domain" "bootstrap" {
 
   coreos_ignition = libvirt_ignition.bootstrap.id
 
-  graphics {
+  graphics = {
     type   = "vnc"
     listen = "0.0.0.0"
   }
@@ -93,7 +94,7 @@ resource "libvirt_domain" "master" {
 
   coreos_ignition = libvirt_ignition.master.id
 
-  graphics {
+  graphics = {
     type   = "vnc"
     listen = "0.0.0.0"
   }
@@ -133,7 +134,7 @@ resource "libvirt_domain" "worker" {
 
   coreos_ignition = libvirt_ignition.worker.id
 
-  graphics {
+  graphics = {
     type   = "vnc"
     listen = "0.0.0.0"
   }
