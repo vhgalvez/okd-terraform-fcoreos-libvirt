@@ -1,6 +1,4 @@
 # terraform/main.tf
-
-# terraform/main.tf
 ########################################################################
 # TERRAFORM BACKEND + PROVIDERS
 ########################################################################
@@ -11,7 +9,7 @@ terraform {
   required_providers {
     libvirt = {
       source  = "dmacvicar/libvirt"
-      version = "0.9.1"
+      version = "0.9.1" # Versión deseada
     }
     template = {
       source  = "hashicorp/template"
@@ -29,24 +27,25 @@ provider "libvirt" {
 }
 
 ########################################################################
-# STORAGE POOL (SINTAXIS CORREGIDA PARA 0.9.1) 🛠️
+# STORAGE POOL
 ########################################################################
 
 resource "libvirt_pool" "okd" {
   name = "okd"
   type = "dir"
 
-  # ✅ CORREGIDO: Se elimina el bloque 'target' y se usa el argumento 'path'
-  # directamente dentro del recurso libvirt_pool.
-  path = "/var/lib/libvirt/images/okd"
+  # ✅ CORRECCIÓN (v0.6.x/v0.10+): Se usa el bloque 'target' ya que el argumento 'path' fue rechazado.
+  target {
+    path = "/var/lib/libvirt/images/okd"
+  }
 }
 
 ########################################################################
-# OUTPUTS (SINTAXIS CORREGIDA PARA 0.9.1) 🛠️
+# OUTPUTS
 ########################################################################
 
 output "pool_okd_path" {
-  # ✅ CORREGIDO: El path ya no está en el atributo target.path, sino en .path
-  value       = libvirt_pool.okd.path
+  # ✅ CORRECCIÓN: El valor se extrae del bloque target.path.
+  value       = libvirt_pool.okd.target.path
   description = "Ruta real del pool OKD"
 }
