@@ -32,7 +32,7 @@ resize_rootfs: true
 write_files:
 
   #----------------------------------------------------------
-  # NetworkManager con DNS correcto
+  # NetworkManager — IP fija + DNS interno OK
   #----------------------------------------------------------
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
@@ -76,7 +76,7 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
 
   #----------------------------------------------------------
-  # NetworkManager no toca resolv.conf
+  # NetworkManager — no tocar resolv.conf
   #----------------------------------------------------------
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
@@ -85,7 +85,7 @@ write_files:
       dns=none
 
   #----------------------------------------------------------
-  # CoreDNS: Corefile
+  # CoreDNS — Corefile
   #----------------------------------------------------------
   - path: /etc/coredns/Corefile
     permissions: "0644"
@@ -98,7 +98,7 @@ write_files:
       }
 
   #----------------------------------------------------------
-  # CoreDNS: zona interna completa
+  # CoreDNS — Zona interna completa
   #----------------------------------------------------------
   - path: /etc/coredns/db.okd
     permissions: "0644"
@@ -124,7 +124,7 @@ write_files:
       *.apps      IN A 10.56.0.13
 
   #----------------------------------------------------------
-  # CoreDNS service
+  # CoreDNS systemd service
   #----------------------------------------------------------
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
@@ -143,7 +143,7 @@ write_files:
       WantedBy=multi-user.target
 
   #----------------------------------------------------------
-  # HAProxy (sin cambios)
+  # HAProxy
   #----------------------------------------------------------
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
@@ -228,19 +228,24 @@ runcmd:
   - sysctl --system
 
   #----------------------------------------------------------
-  # resolv.conf corregido y coherente con dominio real
+  # resolv.conf coherente con DNS local
   #----------------------------------------------------------
   - rm -f /etc/resolv.conf
   - printf "nameserver 127.0.0.1\nnameserver 10.56.0.10\nsearch okd-lab.okd.local okd.local\n" > /etc/resolv.conf
 
   #----------------------------------------------------------
-  # CoreDNS instalación correcta (binario)
+  # CoreDNS instalación CORRECTA (tgz → binario real)
   #----------------------------------------------------------
   - mkdir -p /etc/coredns
   - mkdir -p /usr/local/bin
-  - curl -L -o /usr/local/bin/coredns https://github.com/coredns/coredns/releases/download/v1.11.1/coredns_1.11.1_linux_amd64
+  - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
+  - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - chmod +x /usr/local/bin/coredns
+  - rm -f /tmp/coredns.tgz
 
+  #----------------------------------------------------------
+  # SELinux FIX
+  #----------------------------------------------------------
   - setsebool -P haproxy_connect_any 1
   - setsebool -P httpd_can_network_connect 1
   - semanage port -a -t http_port_t -p tcp 6443 || true
