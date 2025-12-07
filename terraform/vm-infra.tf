@@ -143,11 +143,10 @@ resource "libvirt_domain" "infra_infra" {
   # Consola serie para ver el boot:
   # sudo virsh console okd-infra
   consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
-  }
+    {
+      type        = "pty"
+      target_type = "serial"
+      target_port = "0"
+    }
+  ]
 }
