@@ -1,9 +1,7 @@
 # terraform/vm-coreos.tf
-
 ###############################################
 # BASE IMAGE FOR FEDORA COREOS
 ###############################################
-
 resource "libvirt_volume" "coreos_base" {
   name   = "fcos-base.qcow2"
   pool   = libvirt_pool.okd.name
@@ -13,7 +11,6 @@ resource "libvirt_volume" "coreos_base" {
 ###############################################
 # VM DISKS
 ###############################################
-
 resource "libvirt_volume" "bootstrap_disk" {
   name           = "bootstrap.qcow2"
   pool           = libvirt_pool.okd.name
@@ -32,32 +29,9 @@ resource "libvirt_volume" "worker_disk" {
   base_volume_id = libvirt_volume.coreos_base.id
 }
 
-###############################################
-# IGNITION USING NEW SYNTAX
-###############################################
-
-resource "libvirt_ignition" "bootstrap" {
-  name      = "bootstrap.ign"
-  pool_name = libvirt_pool.okd.name
-  content   = file("${path.module}/../generated/ignition/bootstrap.ign")
-}
-
-resource "libvirt_ignition" "master" {
-  name      = "master.ign"
-  pool_name = libvirt_pool.okd.name
-  content   = file("${path.module}/../generated/ignition/master.ign")
-}
-
-resource "libvirt_ignition" "worker" {
-  name      = "worker.ign"
-  pool_name = libvirt_pool.okd.name
-  content   = file("${path.module}/../generated/ignition/worker.ign")
-}
-
 ###############################################################
 # BOOTSTRAP NODE
 ###############################################################
-
 resource "libvirt_domain" "bootstrap" {
   name      = "okd-bootstrap"
   memory    = var.bootstrap.memory
@@ -79,7 +53,7 @@ resource "libvirt_domain" "bootstrap" {
 
   coreos_ignition = libvirt_ignition.bootstrap.id
 
-  graphics = {
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
   }
@@ -98,7 +72,6 @@ resource "libvirt_domain" "bootstrap" {
 ###############################################################
 # MASTER NODE
 ###############################################################
-
 resource "libvirt_domain" "master" {
   name      = "okd-master"
   memory    = var.master.memory
@@ -120,7 +93,7 @@ resource "libvirt_domain" "master" {
 
   coreos_ignition = libvirt_ignition.master.id
 
-  graphics = {
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
   }
@@ -139,7 +112,6 @@ resource "libvirt_domain" "master" {
 ###############################################################
 # WORKER NODE
 ###############################################################
-
 resource "libvirt_domain" "worker" {
   name      = "okd-worker"
   memory    = var.worker.memory
@@ -161,7 +133,7 @@ resource "libvirt_domain" "worker" {
 
   coreos_ignition = libvirt_ignition.worker.id
 
-  graphics = {
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
   }
