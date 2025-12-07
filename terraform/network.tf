@@ -4,22 +4,19 @@ resource "libvirt_network" "okd_net" {
   name      = var.network_name
   autostart = true
 
-  # Bridge de la red
   bridge = {
     name = "virbr_okd"
   }
 
-  # Dominio DNS del cluster
   domain = {
     name = "${var.cluster_name}.${var.cluster_domain}"
-    local_only = "yes"
   }
 
-  # Configuración de IP y DHCP
+  # Dirección del propio bridge + DHCP estático para las VMs
   ips = [{
-    family  = "ipv4"
-    address = cidrhost(var.network_cidr, 1)  # Ej: 10.56.0.1
+    address = cidrhost(var.network_cidr, 1)  # 10.56.0.1
     netmask = cidrnetmask(var.network_cidr)
+    family  = "ipv4"
 
     dhcp = {
       hosts = [
@@ -47,7 +44,6 @@ resource "libvirt_network" "okd_net" {
     }
   }]
 
-  # DNS embebido de libvirt
   dns = {
     host = [
       {
@@ -60,7 +56,7 @@ resource "libvirt_network" "okd_net" {
 
     forwarders = [
       {
-        addr = var.infra_ip  # Forward hacia CoreDNS del nodo infra
+        addr = var.infra_ip
       }
     ]
   }

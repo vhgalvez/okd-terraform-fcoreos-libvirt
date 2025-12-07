@@ -1,4 +1,4 @@
-# terraform\outputs.tf
+# terraform/outputs.tf
 
 #############################################
 # MAPA COMPLETO DE IPs
@@ -37,16 +37,16 @@ output "worker_ip" {
 }
 
 #############################################
-# RED Y DOMINIO — Para validar la red NAT
+# RED Y DOMINIO — Útil para validar red NAT
 #############################################
 output "network_name" {
-  description = "Nombre de la red libvirt"
   value       = var.network_name
+  description = "Nombre de la red libvirt"
 }
 
 output "network_cidr" {
-  description = "CIDR de la red libvirt"
   value       = var.network_cidr
+  description = "CIDR de la red libvirt"
 }
 
 #############################################
@@ -56,3 +56,4 @@ output "libvirt_pool_path" {
   description = "Ruta del pool de libvirt donde se guardan los discos"
   value       = libvirt_pool.okd.target.path
 }
+

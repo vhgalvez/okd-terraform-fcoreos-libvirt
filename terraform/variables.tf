@@ -1,4 +1,3 @@
-# terraform/variables.tf
 #############################################
 # RED
 #############################################
@@ -15,10 +14,18 @@ variable "network_cidr" {
 }
 
 #############################################
+# SSH KEYS
+#############################################
+variable "ssh_keys" {
+  description = "Lista de claves públicas SSH autorizadas"
+  type        = list(string)
+}
+
+#############################################
 # NODO INFRA (AlmaLinux)
 #############################################
 variable "infra" {
-  description = "Configuración del nodo infra (DNS, NTP, LB)"
+  description = "Configuración del nodo infra"
   type = object({
     cpus     = number
     memory   = number
@@ -71,43 +78,51 @@ variable "worker" {
 # IMÁGENES BASE
 #############################################
 variable "coreos_image" {
-  description = "URL o ruta local al QCOW2 de Fedora CoreOS"
+  description = "Ruta al archivo qcow2 de Fedora CoreOS"
   type        = string
 }
 
 variable "almalinux_image" {
-  description = "Ruta al QCOW2 de AlmaLinux para nodo infra"
+  description = "Ruta al archivo qcow2 de AlmaLinux"
   type        = string
 }
 
 #############################################
-# SSH KEYS
+# DNS / RED
 #############################################
-variable "ssh_keys" {
-  description = "Claves SSH públicas autorizadas para nodos FCOS"
-  type        = list(string)
+variable "dns1" {
+  description = "DNS primario para la red"
+  type        = string
+}
+
+variable "dns2" {
+  description = "DNS secundario para la red"
+  type        = string
+}
+
+variable "gateway" {
+  description = "Gateway de la red libvirt"
+  type        = string
 }
 
 #############################################
-# CLUSTER INFO
+# CLUSTER OKD INFO
 #############################################
 variable "cluster_domain" {
-  description = "Dominio del cluster OKD"
+  description = "Dominio base del clúster OKD (ej. okd.local)"
   type        = string
-  default     = "local"
 }
 
 variable "cluster_name" {
-  description = "Nombre del cluster OKD"
+  description = "Nombre del cluster OKD (usado en FQDN internos)"
   type        = string
-  default     = "okd"
 }
 
 #############################################
-# INFRA IP PARA DNS FORWARD
+# IP del nodo infra (para DNS forwarder)
 #############################################
 variable "infra_ip" {
-  description = "IP del nodo infra (usado como DNS forwarder)"
+  description = "IP del servidor infra (DNS + NTP)"
   type        = string
 }
 
@@ -115,26 +130,7 @@ variable "infra_ip" {
 # ZONA HORARIA
 #############################################
 variable "timezone" {
-  description = "Zona horaria para los nodos"
+  description = "Zona horaria del sistema"
   type        = string
   default     = "UTC"
-}
-
-
-#############################################
-# DNS / GATEWAY para nodo infra
-#############################################
-variable "dns1" {
-  description = "DNS primario"
-  type        = string
-}
-
-variable "dns2" {
-  description = "DNS secundario"
-  type        = string
-}
-
-variable "gateway" {
-  description = "Gateway predeterminado del nodo infra"
-  type        = string
 }
