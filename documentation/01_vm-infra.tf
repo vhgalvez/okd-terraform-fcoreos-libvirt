@@ -1,83 +1,152 @@
 # terraform/vm-infra.tf
-
-# ================================
-#  DISCO DEL NODO INFRA
-# ================================
+###############################################
+# DISCO DEL NODO INFRA (AlmaLinux)
+###############################################
 resource "libvirt_volume" "infra_disk" {
-  name   = "okd-infra.qcow2"
-  source = var.almalinux_image
-  pool   = libvirt_pool.okd.name
+  name = "okd-infra.qcow2"
+  pool = libvirt_pool.okd.name
+
+  # Imagen base AlmaLinux (ruta local o URL)
+  # OJO: var.almalinux_image debe existir y ser legible por libvirtd
+  create = {
+    content = {
+      url = var.almalinux_image
+    }
+  }
+
+  target = {
+    format = {
+      type = "qcow2"
+    }
+  }
 }
 
-# ================================
-#  CLOUD-INIT DEL NODO INFRA
-# ================================
+###############################################
+# CLOUD-INIT TEMPLATE
+###############################################
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
 
   vars = {
-    # Hostnames
     hostname       = var.infra.hostname
     short_hostname = split(".", var.infra.hostname)[0]
 
-    # Red
-    ip             = var.infra.ip
-    gateway        = var.gateway
-    dns1           = var.dns1
-    dns2           = var.dns2
-    cluster_domain = var.cluster_domain
+    ip      = var.infra.ip
+    gateway = var.gateway
 
-    # SSH / zona horaria
-    ssh_keys       = jsonencode(var.ssh_keys)
-    timezone       = var.timezone
+    dns1 = var.dns1
+    dns2 = var.dns2
+
+    cluster_domain = var.cluster_domain
+    cluster_name   = var.cluster_name
+    cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
+
+    ssh_keys = join("\n", var.ssh_keys)
+    timezone = var.timezone
   }
 }
 
+###############################################
+# CLOUD-INIT ISO
+###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
-  name      = "infra_cloudinit.iso"
-  pool      = libvirt_pool.okd.name
+  name      = "infra-cloudinit"
   user_data = data.template_file.infra_cloud_init.rendered
+
+  meta_data = yamlencode({
+    instance-id    = "okd-infra"
+    local-hostname = var.infra.hostname
+  })
 }
 
-# ================================
-#  DEFINICIÓN DE LA VM INFRA
-# ================================
-resource "libvirt_domain" "infra" {
-  name   = "okd-infra"
-  memory = var.infra.memory
-  vcpu   = var.infra.cpus
+resource "libvirt_volume" "infra_cloudinit" {
+  name = "infra-cloudinit.iso"
+  pool = libvirt_pool.okd.name
 
-  cpu {
+  create = {
+    content = {
+      url = libvirt_cloudinit_disk.infra_init.path
+    }
+  }
+
+  target = {
+    format = {
+      type = "raw"
+    }
+  }
+}
+
+###############################################
+# VM INFRA (HAProxy + CoreDNS)
+###############################################
+resource "libvirt_domain" "infra" {
+  name      = "okd-infra"
+  type      = "kvm"
+  vcpu      = var.infra.cpus
+  memory    = var.infra.memory
+  autostart = true
+
+  cpu = {
     mode = "host-passthrough"
   }
 
-  network_interface {
-    network_id = libvirt_network.okd_net.id
-    addresses  = [var.infra.ip]
+  os = {
+    type         = "hvm"
+    type_arch    = "x86_64"
+    type_machine = "q35"
+    boot_devices = [{ dev = "hd" }]
   }
 
-  disk {
-    volume_id = libvirt_volume.infra_disk.id
-  }
+  devices = {
+    disks = [
+      {
+        # Disco principal de AlmaLinux
+        source = {
+          volume = {
+            pool   = libvirt_volume.infra_disk.pool
+            volume = libvirt_volume.infra_disk.name
+          }
+        }
+        target = {
+          dev = "vda"
+          bus = "virtio"
+        }
+      },
+      {
+        # Segundo disco: ISO de cloud-init
+        source = {
+          volume = {
+            pool   = libvirt_volume.infra_cloudinit.pool
+            volume = libvirt_volume.infra_cloudinit.name
+          }
+        }
+        target = {
+          dev = "vdb"
+          bus = "virtio"
+        }
+      }
+    ]
 
-  cloudinit = libvirt_cloudinit_disk.infra_init.id
+    interfaces = [
+      {
+        model = { type = "virtio" }
+        source = {
+          network = {
+            network = libvirt_network.okd_net.name
+          }
+        }
+        mac = { address = var.infra.mac }
+      }
+    ]
 
-  # 🔥 Forzamos VNC — evita SPICE:
-  # “spice graphics are not supported with this QEMU”
-  graphics {
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
-  }
-
-  video {
-    type = "vga"
-  }
-
-  console {
-    type        = "pty"
-    target_type = "serial"
-    target_port = "0"
+    # Consola serie para ver el boot:
+    #   sudo virsh console okd-infra
+    consoles = [
+      {
+        type        = "pty"
+        target_type = "serial"
+        target_port = "0"
+      }
+    ]
   }
 }
