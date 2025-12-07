@@ -1,27 +1,24 @@
 # terraform/vm-infra.tf
 
-# ================================
-#  DISCO DEL NODO INFRA (AlmaLinux)
-# ================================
+###############################################
+# DISCO DEL NODO INFRA (AlmaLinux)
+###############################################
 resource "libvirt_volume" "infra_disk" {
   name   = "okd-infra.qcow2"
   pool   = libvirt_pool.okd.name
-
-  target = {
-    format = "qcow2"
-  }
+  format = "qcow2"
 
   create = {
     content = {
-      # Puede ser ruta local tipo "/var/lib/libvirt/images/AlmaLinux-9.qcow2"
       url = var.almalinux_image
     }
   }
 }
 
-# ================================
-#  CLOUD-INIT DEL NODO INFRA
-# ================================
+###############################################
+# CLOUD-INIT (GENERACIÓN ISO)
+# - NO tiene pool/pool_name según tu schema
+###############################################
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
 
@@ -37,7 +34,6 @@ data "template_file" "infra_cloud_init" {
 
     cluster_domain = var.cluster_domain
     cluster_name   = var.cluster_name
-    cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
 
     ssh_keys = join("\n", var.ssh_keys)
     timezone = var.timezone
@@ -45,7 +41,7 @@ data "template_file" "infra_cloud_init" {
 }
 
 resource "libvirt_cloudinit_disk" "infra_init" {
-  name      = "infra-cloudinit.iso"
+  name      = "infra-init"
   user_data = data.template_file.infra_cloud_init.rendered
 
   meta_data = yamlencode({
@@ -54,14 +50,13 @@ resource "libvirt_cloudinit_disk" "infra_init" {
   })
 }
 
-# Volumen desde el ISO generado por cloud-init
+###############################################
+# SUBIR EL ISO DE CLOUD-INIT AL POOL
+###############################################
 resource "libvirt_volume" "infra_cloudinit" {
-  name   = "infra-cloudinit-volume.iso"
+  name   = "infra-cloudinit.iso"
   pool   = libvirt_pool.okd.name
-
-  target = {
-    format = "raw"
-  }
+  format = "raw"
 
   create = {
     content = {
@@ -70,43 +65,68 @@ resource "libvirt_volume" "infra_cloudinit" {
   }
 }
 
-# ================================
-#  DEFINICIÓN DE LA VM INFRA
-# ================================
+###############################################
+# VM INFRA (0.9.1 - patrón devices)
+###############################################
 resource "libvirt_domain" "infra" {
-  name   = "okd-infra"
-  vcpu   = var.infra.cpus
-  memory = var.infra.memory
-  type   = "kvm"
+  name      = "okd-infra"
+  type      = "kvm"
+  vcpu      = var.infra.cpus
+  memory    = var.infra.memory
+  autostart = true
 
   os = {
-    type = "hvm"
-    arch = "x86_64"
+    type         = "hvm"
+    type_arch    = "x86_64"
+    type_machine = "q35"
+    boot_devices = ["hd"]
   }
 
   cpu = {
     mode = "host-passthrough"
   }
 
-  disk = [
-    {
-      volume_id = libvirt_volume.infra_disk.id
-    },
-    {
-      volume_id = libvirt_volume.infra_cloudinit.id
+  devices = {
+    disks = [
+      {
+        source = {
+          pool   = libvirt_volume.infra_disk.pool
+          volume = libvirt_volume.infra_disk.name
+        }
+        target = {
+          dev = "vda"
+          bus = "virtio"
+        }
+      },
+      {
+        source = {
+          pool   = libvirt_volume.infra_cloudinit.pool
+          volume = libvirt_volume.infra_cloudinit.name
+        }
+        target = {
+          dev = "vdb"
+          bus = "virtio"
+        }
+      }
+    ]
+
+    interfaces = [
+      {
+        model = { type = "virtio" }
+        source = {
+          network = {
+            network = libvirt_network.okd_net.name
+          }
+        }
+        mac = var.infra.mac
+      }
+    ]
+
+    graphics = {
+      vnc = {
+        listen   = "0.0.0.0"
+        autoport = true
+      }
     }
-  ]
-
-  network_interface = [{
-    network_id = libvirt_network.okd_net.id
-    mac        = var.infra.mac
-    model      = "virtio"
-  }]
-
-  graphics = [{
-    type   = "vnc"
-    listen = "0.0.0.0"
-  }]
-
-  autostart = true
+  }
 }

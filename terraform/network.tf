@@ -12,38 +12,41 @@ resource "libvirt_network" "okd_net" {
     name = "${var.cluster_name}.${var.cluster_domain}"
   }
 
-  # Dirección del propio bridge + DHCP estático para las VMs
-  ips = [{
-    address = cidrhost(var.network_cidr, 1)  # 10.56.0.1
-    netmask = cidrnetmask(var.network_cidr)
-    family  = "ipv4"
+  # IP de la red (nuevo modelo ips)
+  ips = [
+    {
+      family  = "ipv4"
+      address = cidrhost(var.network_cidr, 1)   # 10.56.0.1
+      netmask = cidrnetmask(var.network_cidr)
 
-    dhcp = {
-      hosts = [
-        {
-          mac  = var.bootstrap.mac
-          ip   = var.bootstrap.ip
-          name = "bootstrap"
-        },
-        {
-          mac  = var.master.mac
-          ip   = var.master.ip
-          name = "master"
-        },
-        {
-          mac  = var.worker.mac
-          ip   = var.worker.ip
-          name = "worker"
-        },
-        {
-          mac  = var.infra.mac
-          ip   = var.infra.ip
-          name = "infra"
-        }
-      ]
+      dhcp = {
+        hosts = [
+          {
+            name = "bootstrap"
+            mac  = var.bootstrap.mac
+            ip   = var.bootstrap.ip
+          },
+          {
+            name = "master"
+            mac  = var.master.mac
+            ip   = var.master.ip
+          },
+          {
+            name = "worker"
+            mac  = var.worker.mac
+            ip   = var.worker.ip
+          },
+          {
+            name = "infra"
+            mac  = var.infra.mac
+            ip   = var.infra.ip
+          }
+        ]
+      }
     }
-  }]
+  ]
 
+  # DNS según schema 0.9.1
   dns = {
     host = [
       {
@@ -54,10 +57,9 @@ resource "libvirt_network" "okd_net" {
       }
     ]
 
+    # Forwarder externo (tu variable)
     forwarders = [
-      {
-        addr = var.infra_ip
-      }
+      { addr = var.infra_ip }
     ]
   }
 }

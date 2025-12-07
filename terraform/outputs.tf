@@ -37,7 +37,7 @@ output "worker_ip" {
 }
 
 #############################################
-# RED Y DOMINIO — Útil para validar red NAT
+# RED Y DOMINIO
 #############################################
 output "network_name" {
   value       = var.network_name
@@ -50,10 +50,9 @@ output "network_cidr" {
 }
 
 #############################################
-# POOL — Ruta real usada por libvirt
+# POOL — Ruta real usada por libvirt (0.9.1)
 #############################################
 output "libvirt_pool_path" {
   description = "Ruta del pool de libvirt donde se guardan los discos"
   value       = libvirt_pool.okd.target.path
 }
-

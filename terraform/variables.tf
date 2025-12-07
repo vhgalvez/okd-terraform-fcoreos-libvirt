@@ -1,3 +1,4 @@
+# terraform/variables.tf
 #############################################
 # RED
 #############################################
@@ -78,12 +79,12 @@ variable "worker" {
 # IMÁGENES BASE
 #############################################
 variable "coreos_image" {
-  description = "Ruta al archivo qcow2 de Fedora CoreOS"
+  description = "Ruta o URL del qcow2 de Fedora CoreOS"
   type        = string
 }
 
 variable "almalinux_image" {
-  description = "Ruta al archivo qcow2 de AlmaLinux"
+  description = "Ruta o URL del qcow2 de AlmaLinux"
   type        = string
 }
 
@@ -119,10 +120,12 @@ variable "cluster_name" {
 }
 
 #############################################
-# IP del nodo infra (para DNS forwarder)
+# IP del nodo infra (para forwarders)
+# (puede ser igual a var.infra.ip, lo dejamos separado
+#  porque tú lo estás usando así en network.tf)
 #############################################
 variable "infra_ip" {
-  description = "IP del servidor infra (DNS + NTP)"
+  description = "IP del servidor infra (DNS forwarder)"
   type        = string
 }
 
