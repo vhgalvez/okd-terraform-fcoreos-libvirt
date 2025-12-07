@@ -36,8 +36,8 @@ resource "libvirt_cloudinit_disk" "infra_init" {
     local-hostname = var.infra.hostname
   })
 
-  # ✅ CORRECCIÓN (v0.6.x/v0.10+): Se usa el argumento 'pool' (no 'pool_name').
-  pool = libvirt_pool.okd.name
+  # ✅ CORRECCIÓN: Se cambia 'pool' (fallido) por el argumento 'pool_name'.
+  pool_name = libvirt_pool.okd.name
 }
 
 resource "libvirt_domain" "infra" {
@@ -46,30 +46,28 @@ resource "libvirt_domain" "infra" {
   memory = var.infra.memory
   type   = "kvm"
 
-  # ✅ CORRECCIÓN: 'os' es ahora un argumento (mapa).
+  # ✅ CORRECCIÓN: 'os' es un argumento (mapa).
   os = {
     type = "hvm"
     arch = "x86_64"
   }
 
-  # ✅ CORRECCIÓN: 'disk' es ahora una lista de mapas.
-  disk = [
-    { volume_id = libvirt_volume.infra_disk.id },
-    { volume_id = libvirt_cloudinit_disk.infra_init.id }
-  ]
+  # ✅ CORRECCIÓN: 'disk' usa Bloques HCL anidados.
+  disk { volume_id = libvirt_volume.infra_disk.id }
+  disk { volume_id = libvirt_cloudinit_disk.infra_init.id }
 
-  # ✅ CORRECCIÓN: 'network_interface' es ahora una lista de mapas.
-  network_interface = [{
+  # ✅ CORRECCIÓN: 'network_interface' usa Bloque HCL anidado.
+  network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.infra.mac
     model      = "virtio"
-  }]
+  }
 
-  # ✅ CORRECCIÓN: 'graphics' es ahora una lista de mapas.
-  graphics = [{
+  # ✅ CORRECCIÓN: 'graphics' usa Bloque HCL anidado.
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
-  }]
+  }
 
   autostart = true
 }

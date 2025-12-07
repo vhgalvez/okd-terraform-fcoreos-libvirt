@@ -90,33 +90,34 @@ resource "libvirt_volume" "worker_ignition" {
 # BOOTSTRAP NODE
 ###############################################
 resource "libvirt_domain" "bootstrap" {
-  name    = "okd-bootstrap"
-  vcpu    = var.bootstrap.cpus
-  memory  = var.bootstrap.memory
-  type    = "kvm"
+  name   = "okd-bootstrap"
+  vcpu   = var.bootstrap.cpus
+  memory = var.bootstrap.memory
+  type   = "kvm"
 
-  # ✅ CORRECCIÓN: 'os', 'disk', 'network_interface', 'graphics' se definen como argumentos de lista de mapas.
+  # ✅ CORRECCIÓN: 'os' es un argumento (mapa).
   os = {
     type    = "hvm"
     arch    = "x86_64"
     machine = "q35"
   }
 
-  disk = [
-    { volume_id = libvirt_volume.bootstrap_disk.id },
-    { volume_id = libvirt_volume.bootstrap_ignition.id }
-  ]
+  # ✅ CORRECCIÓN: 'disk' usa Bloques HCL anidados.
+  disk { volume_id = libvirt_volume.bootstrap_disk.id }
+  disk { volume_id = libvirt_volume.bootstrap_ignition.id }
 
-  network_interface = [{
+  # ✅ CORRECCIÓN: 'network_interface' usa Bloque HCL anidado.
+  network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.bootstrap.mac
     model      = "virtio"
-  }]
+  }
 
-  graphics = [{
+  # ✅ CORRECCIÓN: 'graphics' usa Bloque HCL anidado.
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
-  }]
+  }
 
   autostart = true
 }
@@ -125,33 +126,30 @@ resource "libvirt_domain" "bootstrap" {
 # MASTER NODE
 ###############################################
 resource "libvirt_domain" "master" {
-  name    = "okd-master"
-  vcpu    = var.master.cpus
-  memory  = var.master.memory
-  type    = "kvm"
+  name   = "okd-master"
+  vcpu   = var.master.cpus
+  memory = var.master.memory
+  type   = "kvm"
 
-  # ✅ CORRECCIÓN: Argumentos de lista de mapas.
   os = {
     type    = "hvm"
     arch    = "x86_64"
     machine = "q35"
   }
 
-  disk = [
-    { volume_id = libvirt_volume.master_disk.id },
-    { volume_id = libvirt_volume.master_ignition.id }
-  ]
+  disk { volume_id = libvirt_volume.master_disk.id }
+  disk { volume_id = libvirt_volume.master_ignition.id }
 
-  network_interface = [{
+  network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.master.mac
     model      = "virtio"
-  }]
+  }
 
-  graphics = [{
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
-  }]
+  }
 
   autostart = true
 }
@@ -160,33 +158,30 @@ resource "libvirt_domain" "master" {
 # WORKER NODE
 ###############################################
 resource "libvirt_domain" "worker" {
-  name    = "okd-worker"
-  vcpu    = var.worker.cpus
-  memory  = var.worker.memory
-  type    = "kvm"
+  name   = "okd-worker"
+  vcpu   = var.worker.cpus
+  memory = var.worker.memory
+  type   = "kvm"
 
-  # ✅ CORRECCIÓN: Argumentos de lista de mapas.
   os = {
     type    = "hvm"
     arch    = "x86_64"
     machine = "q35"
   }
 
-  disk = [
-    { volume_id = libvirt_volume.worker_disk.id },
-    { volume_id = libvirt_volume.worker_ignition.id }
-  ]
+  disk { volume_id = libvirt_volume.worker_disk.id }
+  disk { volume_id = libvirt_volume.worker_ignition.id }
 
-  network_interface = [{
+  network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.worker.mac
     model      = "virtio"
-  }]
+  }
 
-  graphics = [{
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
-  }]
+  }
 
   autostart = true
 }
