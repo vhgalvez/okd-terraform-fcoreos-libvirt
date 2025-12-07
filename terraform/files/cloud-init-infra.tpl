@@ -238,7 +238,7 @@ runcmd:
   # Hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Red
+  # Red (NetworkManager)
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
@@ -249,16 +249,24 @@ runcmd:
   # sysctl
   - sysctl --system
 
-  # resolv.conf estático → usar SIEMPRE CoreDNS local
-  - rm -f /etc/resolv.conf
-  - printf "nameserver 127.0.0.1\nsearch okd.okd.local okd.local\n" > /etc/resolv.conf
-
-  # CoreDNS
+  # CoreDNS: instalar binario ANTES de tocar resolv.conf
   - mkdir -p /etc/coredns
-  - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
-  - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
-  - chmod +x /usr/local/bin/coredns
-  - rm -f /tmp/coredns.tgz
+  - |
+      cd /tmp
+      echo "Descargando CoreDNS..."
+      for i in 1 2 3; do
+        curl -L --fail -o coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz && break
+        echo "Reintentando descarga de CoreDNS (intento $i)..."
+        sleep 3
+      done
+      tar -xzf coredns.tgz
+      mv coredns /usr/local/bin/coredns
+      chmod +x /usr/local/bin/coredns
+      rm -f coredns.tgz
+
+  # resolv.conf estático → usar CoreDNS local con fallback público
+  - rm -f /etc/resolv.conf
+  - printf "nameserver 127.0.0.1\nnameserver ${dns1}\nsearch okd.okd.local okd.local\n" > /etc/resolv.conf
 
   # SELinux FIX para HAProxy
   - setsebool -P haproxy_connect_any 1
