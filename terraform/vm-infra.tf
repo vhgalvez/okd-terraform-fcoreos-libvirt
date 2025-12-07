@@ -6,6 +6,7 @@ resource "libvirt_volume" "infra_disk" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
+  # Imagen base AlmaLinux (ruta local o URL)
   create = {
     content = {
       url = var.almalinux_image
@@ -45,7 +46,7 @@ data "template_file" "infra_cloud_init" {
 }
 
 ###############################################
-# CLOUD-INIT ISO (libvirt_cloudinit_disk)
+# CLOUD-INIT ISO (libvirt_cloudinit_disk + volume)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
@@ -98,6 +99,7 @@ resource "libvirt_domain" "infra" {
   devices = {
     disks = [
       {
+        # Disco principal de AlmaLinux
         source = {
           volume = {
             pool   = libvirt_volume.infra_disk.pool
@@ -110,10 +112,11 @@ resource "libvirt_domain" "infra" {
         }
       },
       {
+        # Segundo disco: ISO de cloud-init (NO infra_ignition, sino infra_cloudinit)
         source = {
           volume = {
-            pool   = libvirt_volume.infra_ignition.pool
-            volume = libvirt_volume.infra_ignition.name
+            pool   = libvirt_volume.infra_cloudinit.pool
+            volume = libvirt_volume.infra_cloudinit.name
           }
         }
         target = {
@@ -136,5 +139,3 @@ resource "libvirt_domain" "infra" {
     ]
   }
 }
-
-
