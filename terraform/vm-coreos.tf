@@ -39,13 +39,18 @@ resource "libvirt_domain" "bootstrap" {
   vcpu      = var.bootstrap.cpus
   autostart = true
 
-  cpu = "host-passthrough"
+  # CPU Configuration (should be an object, not a string)
+  cpu {
+    mode = "host-passthrough"
+  }
 
+  # Network interface
   network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.bootstrap.mac
   }
 
+  # Disk Configuration
   disk {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
@@ -54,13 +59,14 @@ resource "libvirt_domain" "bootstrap" {
   ignition = libvirt_ignition.bootstrap.id
 
   # Gráficos
-  graphics {
-    type   = "vnc"
-    listen = "0.0.0.0"
+  graphics = {
+    type    = "vnc"
+    listen  = "0.0.0.0"
+    autoport = true
   }
 
-  # Video
-  video {
+  # Video Configuration
+  video = {
     type = "vga"
   }
 
@@ -81,13 +87,18 @@ resource "libvirt_domain" "master" {
   vcpu      = var.master.cpus
   autostart = true
 
-  cpu = "host-passthrough"
+  # CPU Configuration (should be an object, not a string)
+  cpu {
+    mode = "host-passthrough"
+  }
 
+  # Network interface
   network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.master.mac
   }
 
+  # Disk Configuration
   disk {
     volume_id = libvirt_volume.master_disk.id
   }
@@ -96,13 +107,14 @@ resource "libvirt_domain" "master" {
   ignition = libvirt_ignition.master.id
 
   # Gráficos
-  graphics {
-    type   = "vnc"
-    listen = "0.0.0.0"
+  graphics = {
+    type    = "vnc"
+    listen  = "0.0.0.0"
+    autoport = true
   }
 
-  # Video
-  video {
+  # Video Configuration
+  video = {
     type = "vga"
   }
 
@@ -123,13 +135,18 @@ resource "libvirt_domain" "worker" {
   vcpu      = var.worker.cpus
   autostart = true
 
-  cpu = "host-passthrough"
+  # CPU Configuration (should be an object, not a string)
+  cpu {
+    mode = "host-passthrough"
+  }
 
+  # Network interface
   network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.worker.mac
   }
 
+  # Disk Configuration
   disk {
     volume_id = libvirt_volume.worker_disk.id
   }
@@ -138,13 +155,14 @@ resource "libvirt_domain" "worker" {
   ignition = libvirt_ignition.worker.id
 
   # Gráficos
-  graphics {
-    type   = "vnc"
-    listen = "0.0.0.0"
+  graphics = {
+    type    = "vnc"
+    listen  = "0.0.0.0"
+    autoport = true
   }
 
-  # Video
-  video {
+  # Video Configuration
+  video = {
     type = "vga"
   }
 
