@@ -137,9 +137,10 @@ resource "libvirt_domain" "infra" {
         mac = { address = var.infra.mac }
       }
     ]
-  graphics = [{
-    type     = "vnc"
-    autoport = true
-    listen   = "0.0.0.0"
-  }]
+    graphics = [{
+      type     = "vnc"
+      autoport = true
+      listen   = "0.0.0.0"
+    }]
+  }
 }
