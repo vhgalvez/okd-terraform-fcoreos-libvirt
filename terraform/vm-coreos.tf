@@ -7,7 +7,7 @@
 resource "libvirt_volume" "coreos_base" {
   name   = "fcos-base.qcow2"
   pool   = libvirt_pool.okd.name
-  source = var.coreos_image # EJ: "/var/lib/libvirt/images/fedora-coreos-....qcow2"
+  source = var.coreos_image       # EJ: "/var/lib/libvirt/images/fedora-coreos-....qcow2"
   format = "qcow2"
 }
 
