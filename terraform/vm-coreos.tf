@@ -36,7 +36,7 @@ resource "libvirt_domain" "bootstrap" {
   name      = "okd-bootstrap"
   memory    = var.bootstrap.memory
   vcpu      = var.bootstrap.cpus
-  addresses  = [var.bootstrap.ip]
+  addresses = var.bootstrap.ip
   autostart = true
 
   cpu {
@@ -83,7 +83,7 @@ resource "libvirt_domain" "master" {
   name      = "okd-master"
   memory    = var.master.memory
   vcpu      = var.master.cpus
-  addresses  = [var.master.ip]
+  addresses = var.master.ip
   autostart = true
 
   cpu {
@@ -127,7 +127,7 @@ resource "libvirt_domain" "worker" {
   name      = "okd-worker"
   memory    = var.worker.memory
   vcpu      = var.worker.cpus
-  addresses  = [var.worker.ip]
+  addresses = var.worker.ip
   autostart = true
 
   cpu {
