@@ -12,12 +12,12 @@ resource "libvirt_volume" "coreos_base" {
     }
   }
 
-  target = {
-    format = { type = "qcow2" }
+  target { # CORRECCIÓN: target como bloque singular
+    format = "qcow2"
   }
 }
 
-###############################################
+------------------------------------------------
 # VM DISKS (Copy-on-write overlays)
 ###############################################
 resource "libvirt_volume" "bootstrap_disk" {
@@ -25,11 +25,11 @@ resource "libvirt_volume" "bootstrap_disk" {
   pool     = libvirt_pool.okd.name
   capacity = 107374182400
 
-  backing_store = {
+  backing_store { # CORRECCIÓN: backing_store como bloque
     path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
+    format = "qcow2"
   }
-  target = { format = { type = "qcow2" } }
+  target { format = "qcow2" } # CORRECCIÓN
 }
 
 resource "libvirt_volume" "master_disk" {
@@ -37,11 +37,11 @@ resource "libvirt_volume" "master_disk" {
   pool     = libvirt_pool.okd.name
   capacity = 107374182400
 
-  backing_store = {
+  backing_store { # CORRECCIÓN
     path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
+    format = "qcow2"
   }
-  target = { format = { type = "qcow2" } }
+  target { format = "qcow2" } # CORRECCIÓN
 }
 
 resource "libvirt_volume" "worker_disk" {
@@ -49,14 +49,14 @@ resource "libvirt_volume" "worker_disk" {
   pool     = libvirt_pool.okd.name
   capacity = 107374182400
 
-  backing_store = {
+  backing_store { # CORRECCIÓN
     path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
+    format = "qcow2"
   }
-  target = { format = { type = "qcow2" } }
+  target { format = "qcow2" } # CORRECCIÓN
 }
 
-###############################################
+------------------------------------------------
 # IGNITION RAW VOLUMES
 ###############################################
 resource "libvirt_ignition" "bootstrap" {
@@ -79,24 +79,24 @@ resource "libvirt_volume" "bootstrap_ignition" {
   pool = libvirt_pool.okd.name
 
   create = { content = { url = libvirt_ignition.bootstrap.path } }
-  target = { format = { type = "raw" } }
+  target { format = "raw" } # CORRECCIÓN
 }
 
 resource "libvirt_volume" "master_ignition" {
-  name   = "master-ignition.raw"
-  pool   = libvirt_pool.okd.name
+  name  = "master-ignition.raw"
+  pool  = libvirt_pool.okd.name
   create = { content = { url = libvirt_ignition.master.path } }
-  target = { format = { type = "raw" } }
+  target { format = "raw" } # CORRECCIÓN
 }
 
 resource "libvirt_volume" "worker_ignition" {
-  name   = "worker-ignition.raw"
-  pool   = libvirt_pool.okd.name
+  name  = "worker-ignition.raw"
+  pool  = libvirt_pool.okd.name
   create = { content = { url = libvirt_ignition.worker.path } }
-  target = { format = { type = "raw" } }
+  target { format = "raw" } # CORRECCIÓN
 }
 
-###############################################
+------------------------------------------------
 # LOCAL DEFINITIONS
 ###############################################
 locals {
@@ -112,7 +112,7 @@ locals {
   }
 }
 
-###############################################
+------------------------------------------------
 # BOOTSTRAP NODE
 ###############################################
 resource "libvirt_domain" "bootstrap" {
@@ -125,37 +125,47 @@ resource "libvirt_domain" "bootstrap" {
   os  = local.domain_os
   cpu = local.cpu_conf
 
-  devices = {
-    disks = [
-      {
-        source = { volume = { pool = libvirt_volume.bootstrap_disk.pool, volume = libvirt_volume.bootstrap_disk.name } }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = { volume = { pool = libvirt_volume.bootstrap_ignition.pool, volume = libvirt_volume.bootstrap_ignition.name } }
-        target = { dev = "vdb", bus = "virtio" }
+  devices { # CORRECCIÓN: devices como bloque
+    disk { # disk como bloque
+      source {
+        volume {
+          pool   = libvirt_volume.bootstrap_disk.pool
+          volume = libvirt_volume.bootstrap_disk.name
+        }
       }
-    ]
+      target { # CORRECCIÓN: target como bloque (disco de arranque vda)
+        dev = "vda"
+        bus = "virtio"
+      }
+    }
+    disk {
+      source {
+        volume {
+          pool   = libvirt_volume.bootstrap_ignition.pool
+          volume = libvirt_volume.bootstrap_ignition.name
+        }
+      }
+      target { # CORRECCIÓN (disco ignition vdb)
+        dev = "vdb"
+        bus = "virtio"
+      }
+    }
 
-    interfaces = [
-      {
-        model  = { type = "virtio" }
-        source = { network = { network = libvirt_network.okd_net.name } }
-        mac    = { address = var.bootstrap.mac }
-      }
-    ]
+    interface { # interface como bloque
+      model { type = "virtio" }
+      source { network { network = libvirt_network.okd_net.name } }
+      mac { address = var.bootstrap.mac }
+    }
 
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
+    console { # CORRECCIÓN: console como bloque singular
+      type        = "pty"
+      target_type = "serial"
+      target_port = "0"
+    }
   }
 }
 
-###############################################
+------------------------------------------------
 # MASTER NODE
 ###############################################
 resource "libvirt_domain" "master" {
@@ -168,37 +178,47 @@ resource "libvirt_domain" "master" {
   os  = local.domain_os
   cpu = local.cpu_conf
 
-  devices = {
-    disks = [
-      {
-        source = { volume = { pool = libvirt_volume.master_disk.pool, volume = libvirt_volume.master_disk.name } }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = { volume = { pool = libvirt_volume.master_ignition.pool, volume = libvirt_volume.master_ignition.name } }
-        target = { dev = "vdb", bus = "virtio" }
+  devices { # CORRECCIÓN
+    disk {
+      source {
+        volume {
+          pool   = libvirt_volume.master_disk.pool
+          volume = libvirt_volume.master_disk.name
+        }
       }
-    ]
+      target { # CORRECCIÓN
+        dev = "vda"
+        bus = "virtio"
+      }
+    }
+    disk {
+      source {
+        volume {
+          pool   = libvirt_volume.master_ignition.pool
+          volume = libvirt_volume.master_ignition.name
+        }
+      }
+      target { # CORRECCIÓN
+        dev = "vdb"
+        bus = "virtio"
+      }
+    }
 
-    interfaces = [
-      {
-        model  = { type = "virtio" }
-        source = { network = { network = libvirt_network.okd_net.name } }
-        mac    = { address = var.master.mac }
-      }
-    ]
+    interface {
+      model { type = "virtio" }
+      source { network { network = libvirt_network.okd_net.name } }
+      mac { address = var.master.mac }
+    }
 
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
+    console { # CORRECCIÓN
+      type        = "pty"
+      target_type = "serial"
+      target_port = "0"
+    }
   }
 }
 
-###############################################
+------------------------------------------------
 # WORKER NODE
 ###############################################
 resource "libvirt_domain" "worker" {
@@ -211,32 +231,42 @@ resource "libvirt_domain" "worker" {
   os  = local.domain_os
   cpu = local.cpu_conf
 
-  devices = {
-    disks = [
-      {
-        source = { volume = { pool = libvirt_volume.worker_disk.pool, volume = libvirt_volume.worker_disk.name } }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = { volume = { pool = libvirt_volume.worker_ignition.pool, volume = libvirt_volume.worker_ignition.name } }
-        target = { dev = "vdb", bus = "virtio" }
+  devices { # CORRECCIÓN
+    disk {
+      source {
+        volume {
+          pool   = libvirt_volume.worker_disk.pool
+          volume = libvirt_volume.worker_disk.name
+        }
       }
-    ]
+      target { # CORRECCIÓN
+        dev = "vda"
+        bus = "virtio"
+      }
+    }
+    disk {
+      source {
+        volume {
+          pool   = libvirt_volume.worker_ignition.pool
+          volume = libvirt_volume.worker_ignition.name
+        }
+      }
+      target { # CORRECCIÓN
+        dev = "vdb"
+        bus = "virtio"
+      }
+    }
 
-    interfaces = [
-      {
-        model  = { type = "virtio" }
-        source = { network = { network = libvirt_network.okd_net.name } }
-        mac    = { address = var.worker.mac }
-      }
-    ]
+    interface {
+      model { type = "virtio" }
+      source { network { network = libvirt_network.okd_net.name } }
+      mac { address = var.worker.mac }
+    }
 
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
+    console { # CORRECCIÓN
+      type        = "pty"
+      target_type = "serial"
+      target_port = "0"
+    }
   }
 }
