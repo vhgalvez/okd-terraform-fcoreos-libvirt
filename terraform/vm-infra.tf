@@ -112,7 +112,7 @@ resource "libvirt_domain" "infra" {
         }
       },
       {
-        # Segundo disco: ISO de cloud-init (NO infra_ignition, sino infra_cloudinit)
+        # Segundo disco: ISO de cloud-init
         source = {
           volume = {
             pool   = libvirt_volume.infra_cloudinit.pool
@@ -138,5 +138,10 @@ resource "libvirt_domain" "infra" {
       }
     ]
   }
-}
 
+  graphics = [{
+    type     = "vnc"
+    autoport = true
+    listen   = "0.0.0.0"
+  }]
+}
