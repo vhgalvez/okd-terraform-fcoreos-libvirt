@@ -24,14 +24,14 @@ data "template_file" "infra_cloud_init" {
     dns1    = var.dns1
     dns2    = var.dns2
 
-    cluster_domain = var.cluster_domain # "okd.local"
-    cluster_name   = var.cluster_name   # "okd"
+    cluster_domain = var.cluster_domain                          # "okd.local"
+    cluster_name   = var.cluster_name                            # "okd"
+    cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}" # "okd.okd.local" 👈
 
     ssh_keys = join("\n", var.ssh_keys)
     timezone = var.timezone
   }
 }
-
 
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra_cloudinit.iso"
