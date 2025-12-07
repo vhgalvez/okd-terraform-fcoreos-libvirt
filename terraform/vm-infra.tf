@@ -4,20 +4,25 @@
 # DISCO DEL NODO INFRA (AlmaLinux)
 ###############################################
 resource "libvirt_volume" "infra_disk" {
-  name   = "okd-infra.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "okd-infra.qcow2"
+  pool = libvirt_pool.okd.name
 
+  # Imagen base AlmaLinux (ruta local o URL)
   create = {
     content = {
       url = var.almalinux_image
     }
   }
+
+  target = {
+    format = {
+      type = "qcow2"
+    }
+  }
 }
 
 ###############################################
-# CLOUD-INIT (GENERACIÓN ISO)
-# - NO tiene pool/pool_name según tu schema
+# CLOUD-INIT DEL NODO INFRA (template_file)
 ###############################################
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
@@ -34,14 +39,18 @@ data "template_file" "infra_cloud_init" {
 
     cluster_domain = var.cluster_domain
     cluster_name   = var.cluster_name
+    cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
 
     ssh_keys = join("\n", var.ssh_keys)
     timezone = var.timezone
   }
 }
 
+###############################################
+# CLOUD-INIT ISO (libvirt_cloudinit_disk + volume)
+###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
-  name      = "infra-init"
+  name      = "infra-cloudinit"
   user_data = data.template_file.infra_cloud_init.rendered
 
   meta_data = yamlencode({
@@ -50,23 +59,25 @@ resource "libvirt_cloudinit_disk" "infra_init" {
   })
 }
 
-###############################################
-# SUBIR EL ISO DE CLOUD-INIT AL POOL
-###############################################
 resource "libvirt_volume" "infra_cloudinit" {
-  name   = "infra-cloudinit.iso"
-  pool   = libvirt_pool.okd.name
-  format = "raw"
+  name = "infra-cloudinit.iso"
+  pool = libvirt_pool.okd.name
 
   create = {
     content = {
       url = libvirt_cloudinit_disk.infra_init.path
     }
   }
+
+  target = {
+    format = {
+      type = "raw"
+    }
+  }
 }
 
 ###############################################
-# VM INFRA (0.9.1 - patrón devices)
+# DEFINICIÓN DE LA VM INFRA (HAProxy + CoreDNS)
 ###############################################
 resource "libvirt_domain" "infra" {
   name      = "okd-infra"
@@ -75,23 +86,27 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
+  cpu = {
+    mode = "host-passthrough"
+  }
+
   os = {
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
-    boot_devices = ["hd"]
-  }
-
-  cpu = {
-    mode = "host-passthrough"
+    boot_devices = [{
+      dev = "hd"
+    }]
   }
 
   devices = {
     disks = [
       {
         source = {
-          pool   = libvirt_volume.infra_disk.pool
-          volume = libvirt_volume.infra_disk.name
+          volume = {
+            pool   = libvirt_volume.infra_disk.pool
+            volume = libvirt_volume.infra_disk.name
+          }
         }
         target = {
           dev = "vda"
@@ -100,8 +115,10 @@ resource "libvirt_domain" "infra" {
       },
       {
         source = {
-          pool   = libvirt_volume.infra_cloudinit.pool
-          volume = libvirt_volume.infra_cloudinit.name
+          volume = {
+            pool   = libvirt_volume.infra_cloudinit.pool
+            volume = libvirt_volume.infra_cloudinit.name
+          }
         }
         target = {
           dev = "vdb"

@@ -1,17 +1,24 @@
 # terraform/vm-coreos.tf
+
 ###############################################
 # BASE IMAGE FOR FEDORA COREOS
-# - En 0.9.1 usamos create.content.url
+# - Provider libvirt v0.9.1 (schema HEAD)
 ###############################################
 resource "libvirt_volume" "coreos_base" {
-  name   = "fcos-base.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "fcos-base.qcow2"
+  pool = libvirt_pool.okd.name
 
+  # Descarga/usa la imagen base (ruta local o URL)
   create = {
     content = {
-      # puede ser ruta local o URL
       url = var.coreos_image
+    }
+  }
+
+  # En 0.9.1 el formato va dentro de "target"
+  target = {
+    format = {
+      type = "qcow2"
     }
   }
 }
@@ -20,44 +27,70 @@ resource "libvirt_volume" "coreos_base" {
 # VM DISKS (Copy-on-write overlays)
 ###############################################
 resource "libvirt_volume" "bootstrap_disk" {
-  name   = "bootstrap.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "bootstrap.qcow2"
+  pool = libvirt_pool.okd.name
+
+  # Tamaño virtual del disco (ej. 100GiB)
+  capacity = 107374182400
 
   backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = "qcow2"
+    path = libvirt_volume.coreos_base.path
+    format = {
+      type = "qcow2"
+    }
+  }
+
+  target = {
+    format = {
+      type = "qcow2"
+    }
   }
 }
 
 resource "libvirt_volume" "master_disk" {
-  name   = "master.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "master.qcow2"
+  pool = libvirt_pool.okd.name
+
+  capacity = 107374182400
 
   backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = "qcow2"
+    path = libvirt_volume.coreos_base.path
+    format = {
+      type = "qcow2"
+    }
+  }
+
+  target = {
+    format = {
+      type = "qcow2"
+    }
   }
 }
 
 resource "libvirt_volume" "worker_disk" {
-  name   = "worker.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "worker.qcow2"
+  pool = libvirt_pool.okd.name
+
+  capacity = 107374182400
 
   backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = "qcow2"
+    path = libvirt_volume.coreos_base.path
+    format = {
+      type = "qcow2"
+    }
+  }
+
+  target = {
+    format = {
+      type = "qcow2"
+    }
   }
 }
 
 ###############################################
 # IGNITION (raw) COMO VOLUMEN
-# - Siguiendo tu ejemplo de doc:
-#   libvirt_ignition -> libvirt_volume create.content.url
+# - libvirt_ignition -> libvirt_volume.create.content.url
 ###############################################
-
 resource "libvirt_ignition" "bootstrap" {
   name    = "bootstrap.ign"
   content = file("${path.module}/../generated/ignition/bootstrap.ign")
@@ -74,37 +107,52 @@ resource "libvirt_ignition" "worker" {
 }
 
 resource "libvirt_volume" "bootstrap_ignition" {
-  name   = "bootstrap.ign"
-  pool   = libvirt_pool.okd.name
-  format = "raw"
+  name = "bootstrap.ign"
+  pool = libvirt_pool.okd.name
 
   create = {
     content = {
       url = libvirt_ignition.bootstrap.path
     }
   }
+
+  target = {
+    format = {
+      type = "raw"
+    }
+  }
 }
 
 resource "libvirt_volume" "master_ignition" {
-  name   = "master.ign"
-  pool   = libvirt_pool.okd.name
-  format = "raw"
+  name = "master.ign"
+  pool = libvirt_pool.okd.name
 
   create = {
     content = {
       url = libvirt_ignition.master.path
     }
   }
+
+  target = {
+    format = {
+      type = "raw"
+    }
+  }
 }
 
 resource "libvirt_volume" "worker_ignition" {
-  name   = "worker.ign"
-  pool   = libvirt_pool.okd.name
-  format = "raw"
+  name = "worker.ign"
+  pool = libvirt_pool.okd.name
 
   create = {
     content = {
       url = libvirt_ignition.worker.path
+    }
+  }
+
+  target = {
+    format = {
+      type = "raw"
     }
   }
 }
@@ -123,20 +171,23 @@ resource "libvirt_domain" "bootstrap" {
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
-    boot_devices = ["hd"]
+    boot_devices = [{
+      dev = "hd"
+    }]
   }
 
   cpu = {
     mode = "host-passthrough"
   }
 
-  # En 0.9.1 evitamos disk/network_interface/graphics en root
   devices = {
     disks = [
       {
         source = {
-          pool   = libvirt_volume.bootstrap_disk.pool
-          volume = libvirt_volume.bootstrap_disk.name
+          volume = {
+            pool   = libvirt_volume.bootstrap_disk.pool
+            volume = libvirt_volume.bootstrap_disk.name
+          }
         }
         target = {
           dev = "vda"
@@ -145,8 +196,10 @@ resource "libvirt_domain" "bootstrap" {
       },
       {
         source = {
-          pool   = libvirt_volume.bootstrap_ignition.pool
-          volume = libvirt_volume.bootstrap_ignition.name
+          volume = {
+            pool   = libvirt_volume.bootstrap_ignition.pool
+            volume = libvirt_volume.bootstrap_ignition.name
+          }
         }
         target = {
           dev = "vdb"
@@ -190,7 +243,9 @@ resource "libvirt_domain" "master" {
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
-    boot_devices = ["hd"]
+    boot_devices = [{
+      dev = "hd"
+    }]
   }
 
   cpu = {
@@ -201,8 +256,10 @@ resource "libvirt_domain" "master" {
     disks = [
       {
         source = {
-          pool   = libvirt_volume.master_disk.pool
-          volume = libvirt_volume.master_disk.name
+          volume = {
+            pool   = libvirt_volume.master_disk.pool
+            volume = libvirt_volume.master_disk.name
+          }
         }
         target = {
           dev = "vda"
@@ -211,8 +268,10 @@ resource "libvirt_domain" "master" {
       },
       {
         source = {
-          pool   = libvirt_volume.master_ignition.pool
-          volume = libvirt_volume.master_ignition.name
+          volume = {
+            pool   = libvirt_volume.master_ignition.pool
+            volume = libvirt_volume.master_ignition.name
+          }
         }
         target = {
           dev = "vdb"
@@ -256,7 +315,9 @@ resource "libvirt_domain" "worker" {
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
-    boot_devices = ["hd"]
+    boot_devices = [{
+      dev = "hd"
+    }]
   }
 
   cpu = {
@@ -267,8 +328,10 @@ resource "libvirt_domain" "worker" {
     disks = [
       {
         source = {
-          pool   = libvirt_volume.worker_disk.pool
-          volume = libvirt_volume.worker_disk.name
+          volume = {
+            pool   = libvirt_volume.worker_disk.pool
+            volume = libvirt_volume.worker_disk.name
+          }
         }
         target = {
           dev = "vda"
@@ -277,8 +340,10 @@ resource "libvirt_domain" "worker" {
       },
       {
         source = {
-          pool   = libvirt_volume.worker_ignition.pool
-          volume = libvirt_volume.worker_ignition.name
+          volume = {
+            pool   = libvirt_volume.worker_ignition.pool
+            volume = libvirt_volume.worker_ignition.name
+          }
         }
         target = {
           dev = "vdb"
