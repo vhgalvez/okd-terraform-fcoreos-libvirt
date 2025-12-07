@@ -139,3 +139,4 @@ resource "libvirt_domain" "infra" {
     ]
   }
 }
+
