@@ -39,30 +39,32 @@ resource "libvirt_domain" "bootstrap" {
   vcpu      = var.bootstrap.cpus
   autostart = true
 
-  cpu {
-    mode = "host-passthrough"
-  }
+  cpu = "host-passthrough"
 
   network_interface {
-    network_name = libvirt_network.okd_net.name
-    mac          = var.bootstrap.mac
+    network_id = libvirt_network.okd_net.id
+    mac        = var.bootstrap.mac
   }
 
   disk {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-  coreos_ignition = libvirt_ignition.bootstrap.id
+  # Ignition
+  ignition = libvirt_ignition.bootstrap.id
 
-  graphics = {
+  # Gráficos
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
   }
 
+  # Video
   video {
     type = "vga"
   }
 
+  # Consola
   console {
     type        = "pty"
     target_type = "serial"
@@ -79,30 +81,32 @@ resource "libvirt_domain" "master" {
   vcpu      = var.master.cpus
   autostart = true
 
-  cpu {
-    mode = "host-passthrough"
-  }
+  cpu = "host-passthrough"
 
   network_interface {
-    network_name = libvirt_network.okd_net.name
-    mac          = var.master.mac
+    network_id = libvirt_network.okd_net.id
+    mac        = var.master.mac
   }
 
   disk {
     volume_id = libvirt_volume.master_disk.id
   }
 
-  coreos_ignition = libvirt_ignition.master.id
+  # Ignition
+  ignition = libvirt_ignition.master.id
 
-  graphics = {
+  # Gráficos
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
   }
 
+  # Video
   video {
     type = "vga"
   }
 
+  # Consola
   console {
     type        = "pty"
     target_type = "serial"
@@ -119,30 +123,32 @@ resource "libvirt_domain" "worker" {
   vcpu      = var.worker.cpus
   autostart = true
 
-  cpu {
-    mode = "host-passthrough"
-  }
+  cpu = "host-passthrough"
 
   network_interface {
-    network_name = libvirt_network.okd_net.name
-    mac          = var.worker.mac
+    network_id = libvirt_network.okd_net.id
+    mac        = var.worker.mac
   }
 
   disk {
     volume_id = libvirt_volume.worker_disk.id
   }
 
-  coreos_ignition = libvirt_ignition.worker.id
+  # Ignition
+  ignition = libvirt_ignition.worker.id
 
-  graphics = {
+  # Gráficos
+  graphics {
     type   = "vnc"
     listen = "0.0.0.0"
   }
 
+  # Video
   video {
     type = "vga"
   }
 
+  # Consola
   console {
     type        = "pty"
     target_type = "serial"
