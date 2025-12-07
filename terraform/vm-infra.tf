@@ -6,7 +6,6 @@ resource "libvirt_volume" "infra_disk" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
-  # Imagen base AlmaLinux (ruta local o URL)
   create = {
     content = {
       url = var.almalinux_image
@@ -46,7 +45,7 @@ data "template_file" "infra_cloud_init" {
 }
 
 ###############################################
-# CLOUD-INIT ISO (libvirt_cloudinit_disk + volume)
+# CLOUD-INIT ISO
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
@@ -68,11 +67,7 @@ resource "libvirt_volume" "infra_cloudinit" {
     }
   }
 
-  target = {
-    format = {
-      type = "raw"
-    }
-  }
+  target = { format = { type = "raw" } }
 }
 
 ###############################################
@@ -99,30 +94,22 @@ resource "libvirt_domain" "infra" {
   devices = {
     disks = [
       {
-        # Disco principal de AlmaLinux
         source = {
           volume = {
             pool   = libvirt_volume.infra_disk.pool
             volume = libvirt_volume.infra_disk.name
           }
         }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
+        target = { dev = "vda", bus = "virtio" }
       },
       {
-        # Segundo disco: ISO de cloud-init
         source = {
           volume = {
             pool   = libvirt_volume.infra_cloudinit.pool
             volume = libvirt_volume.infra_cloudinit.name
           }
         }
-        target = {
-          dev = "vdb"
-          bus = "virtio"
-        }
+        target = { dev = "vdb", bus = "virtio" }
       }
     ]
 
@@ -130,18 +117,21 @@ resource "libvirt_domain" "infra" {
       {
         model = { type = "virtio" }
         source = {
-          network = {
-            network = libvirt_network.okd_net.name
-          }
+          network = { network = libvirt_network.okd_net.name }
         }
         mac = { address = var.infra.mac }
       }
     ]
-  }
 
-  graphics = [{
-    type     = "vnc"
-    autoport = true
-    listen   = "0.0.0.0"
-  }]
+    graphics = [
+      {
+        type = "vnc"
+        listen = {
+          type    = "address"
+          address = "0.0.0.0"
+        }
+        autoport = true
+      }
+    ]
+  }
 }
