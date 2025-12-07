@@ -31,9 +31,9 @@ resize_rootfs: true
 
 write_files:
 
-  #────────────────────────────────────────────────────────
-  # NetworkManager — IP estática + DNS interno
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
+  # NetworkManager con DNS correcto
+  #----------------------------------------------------------
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
     content: |
@@ -47,17 +47,16 @@ write_files:
       method=manual
       address1=${ip}/24,${gateway}
       dns=${dns1};${dns2}
-      # Dominio de búsqueda: cluster FQDN + baseDomain
-      dns-search=okd.okd.local;okd.local
+      dns-search=okd-lab.okd.local
       may-fail=false
       route-metric=10
 
       [ipv6]
       method=ignore
 
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
   # /etc/hosts dinámico
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
   - path: /usr/local/bin/set-hosts.sh
     permissions: "0755"
     content: |
@@ -67,72 +66,66 @@ write_files:
       echo "::1         localhost" >> /etc/hosts
       echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
-  #────────────────────────────────────────────────────────
-  # sysctl — requerido para DNS + API
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
+  # sysctl
+  #----------------------------------------------------------
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
     content: |
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
 
-  #────────────────────────────────────────────────────────
-  # NetworkManager — no tocar resolv.conf
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
+  # NetworkManager no toca resolv.conf
+  #----------------------------------------------------------
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
     content: |
       [main]
       dns=none
 
-  #────────────────────────────────────────────────────────
-  # CoreDNS — Corefile
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
+  # CoreDNS: Corefile
+  #----------------------------------------------------------
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
-      # Zona interna del clúster: okd.okd.local
-      okd.okd.local {
+      okd-lab.okd.local {
         file /etc/coredns/db.okd
       }
-      # El resto de dominios → DNS público
       . {
         forward . 8.8.8.8 1.1.1.1
       }
 
-  #────────────────────────────────────────────────────────
-  # CoreDNS — Zona DNS interna OKD
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
+  # CoreDNS: zona interna completa
+  #----------------------------------------------------------
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
-      $ORIGIN okd.okd.local.
-      @   IN  SOA dns.okd.okd.local. admin.okd.okd.local. (
-              2025010101 ; serial
-              7200       ; refresh
-              3600       ; retry
-              1209600    ; expire
-              3600 )     ; minimum
-      @       IN NS dns.okd.okd.local.
+      $ORIGIN okd-lab.okd.local.
+      @   IN  SOA dns.okd-lab.okd.local. admin.okd-lab.okd.local. (
+              2025010101
+              7200
+              3600
+              1209600
+              3600 )
+      @       IN NS dns.okd-lab.okd.local.
 
-      ; Servidor DNS interno (CoreDNS en infra)
       dns         IN A ${ip}
 
-      ; API externa & interna SIEMPRE vía HAProxy en infra
-      api         IN A ${ip}
-      api-int     IN A ${ip}
+      api         IN A 10.56.0.11
+      api-int     IN A 10.56.0.11
 
-      ; Nodos del clúster (IPs reales)
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
       worker      IN A 10.56.0.13
 
-      ; Todas las apps también entran por HAProxy (80/443)
-      *.apps      IN A ${ip}
+      *.apps      IN A 10.56.0.13
 
-  #────────────────────────────────────────────────────────
-  # CoreDNS — systemd service
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
+  # CoreDNS service
+  #----------------------------------------------------------
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
     content: |
@@ -149,27 +142,24 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-  #────────────────────────────────────────────────────────
-  # HAProxy — load balancer para API, MCS y apps
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
+  # HAProxy (sin cambios)
+  #----------------------------------------------------------
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
     content: |
       global
         log /dev/log local0
-        log /dev/log local1 notice
         maxconn 20000
         daemon
 
       defaults
         mode tcp
         log global
-        option tcplog
         timeout connect 5s
-        timeout client  30s
-        timeout server  30s
+        timeout client 30s
+        timeout server 30s
 
-      # API Kubernetes / OpenShift
       frontend api
         bind 0.0.0.0:6443
         default_backend api_nodes
@@ -177,14 +167,9 @@ write_files:
       backend api_nodes
         balance roundrobin
         option tcp-check
-        # Durante bootstrap:
-        #  - bootstrap sirve el API temporal
-        # Después:
-        #  - master sirve el API definitivo
         server bootstrap 10.56.0.11:6443 check fall 3 rise 2
         server master    10.56.0.12:6443 check fall 3 rise 2
 
-      # Machine Config Server (Ignition)
       frontend mcs
         bind 0.0.0.0:22623
         default_backend mcs_nodes
@@ -193,12 +178,10 @@ write_files:
         balance roundrobin
         server bootstrap 10.56.0.11:22623 check fall 3 rise 2
 
-      # Ingress HTTP
       frontend ingress80
         bind 0.0.0.0:80
         default_backend worker_ingress
 
-      # Ingress HTTPS
       frontend ingress443
         bind 0.0.0.0:443
         default_backend worker_ingress
@@ -208,9 +191,9 @@ write_files:
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
 
-  #────────────────────────────────────────────────────────
-  # Chrony — NTP
-  #────────────────────────────────────────────────────────
+  #----------------------------------------------------------
+  # Chrony
+  #----------------------------------------------------------
   - path: /etc/chrony.conf
     permissions: "0644"
     content: |
@@ -228,58 +211,45 @@ write_files:
 
 runcmd:
 
-  # Swap
   - fallocate -l 4G /swapfile
   - chmod 600 /swapfile
   - mkswap /swapfile
   - swapon /swapfile
   - echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
-  # Hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Red (NetworkManager)
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
-  # Paquetes necesarios
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
-  # sysctl
   - sysctl --system
 
-  # CoreDNS: instalar binario ANTES de tocar resolv.conf
-  - mkdir -p /etc/coredns
-  - |
-      cd /tmp
-      echo "Descargando CoreDNS..."
-      for i in 1 2 3; do
-        curl -L --fail -o coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz && break
-        echo "Reintentando descarga de CoreDNS (intento $i)..."
-        sleep 3
-      done
-      tar -xzf coredns.tgz
-      mv coredns /usr/local/bin/coredns
-      chmod +x /usr/local/bin/coredns
-      rm -f coredns.tgz
-
-  # resolv.conf estático → usar CoreDNS local con fallback público
+  #----------------------------------------------------------
+  # resolv.conf corregido y coherente con dominio real
+  #----------------------------------------------------------
   - rm -f /etc/resolv.conf
-  - printf "nameserver 127.0.0.1\nnameserver ${dns1}\nsearch okd.okd.local okd.local\n" > /etc/resolv.conf
+  - printf "nameserver 127.0.0.1\nnameserver 10.56.0.10\nsearch okd-lab.okd.local okd.local\n" > /etc/resolv.conf
 
-  # SELinux FIX para HAProxy
+  #----------------------------------------------------------
+  # CoreDNS instalación correcta (binario)
+  #----------------------------------------------------------
+  - mkdir -p /etc/coredns
+  - mkdir -p /usr/local/bin
+  - curl -L -o /usr/local/bin/coredns https://github.com/coredns/coredns/releases/download/v1.11.1/coredns_1.11.1_linux_amd64
+  - chmod +x /usr/local/bin/coredns
+
   - setsebool -P haproxy_connect_any 1
   - setsebool -P httpd_can_network_connect 1
   - semanage port -a -t http_port_t -p tcp 6443 || true
   - semanage port -a -t http_port_t -p tcp 22623 || true
 
-  # Servicios
   - systemctl daemon-reload
   - systemctl enable NetworkManager firewalld chronyd coredns haproxy
   - systemctl restart NetworkManager firewalld chronyd coredns haproxy
 
-  # Firewall OKD
   - firewall-cmd --permanent --add-port=53/tcp
   - firewall-cmd --permanent --add-port=53/udp
   - firewall-cmd --permanent --add-port=80/tcp
