@@ -1,8 +1,8 @@
 # terraform/main.tf
+# ============================
+# CONFIGURACIÓN DEL BACKEND
+# ============================
 
-#############################################
-#            TERRAFORM CONFIG
-#############################################
 terraform {
   required_version = ">= 1.10.0, < 2.0.0"
 
@@ -18,15 +18,27 @@ terraform {
   }
 }
 
+# ============================
+# PROVEEDORES
+# ============================
+
 provider "libvirt" {
   uri = "qemu:///system"
 }
+
+# ============================
+# LIBVIRT POOL (CONFIGURACIÓN)
+# ============================
 
 resource "libvirt_pool" "okd" {
   name   = "okd"
   type   = "dir"
   target = "/var/lib/libvirt/images/okd"
 }
+
+# ============================
+# OUTPUTS
+# ============================
 
 output "pool_okd_path" {
   value = libvirt_pool.okd.target

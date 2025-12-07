@@ -1,6 +1,5 @@
 # terraform/ignition.tf
 # Cargar Ignition generada por openshift-install
-
 resource "libvirt_ignition" "bootstrap" {
   name    = "bootstrap.ign"
   pool    = libvirt_pool.okd.name
