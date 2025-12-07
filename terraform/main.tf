@@ -1,4 +1,6 @@
 # terraform/main.tf
+
+# terraform/main.tf
 ########################################################################
 # TERRAFORM BACKEND + PROVIDERS
 ########################################################################
@@ -27,24 +29,24 @@ provider "libvirt" {
 }
 
 ########################################################################
-# STORAGE POOL (SINTAXIS CORRECTA PARA 0.9.1)
+# STORAGE POOL (SINTAXIS CORREGIDA PARA 0.9.1) 🛠️
 ########################################################################
 
 resource "libvirt_pool" "okd" {
   name = "okd"
   type = "dir"
 
-  # ✔ target debe ser BLOQUE, NO string
-  target {
-    path = "/var/lib/libvirt/images/okd"
-  }
+  # ✅ CORREGIDO: Se elimina el bloque 'target' y se usa el argumento 'path'
+  # directamente dentro del recurso libvirt_pool.
+  path = "/var/lib/libvirt/images/okd"
 }
 
 ########################################################################
-# OUTPUTS
+# OUTPUTS (SINTAXIS CORREGIDA PARA 0.9.1) 🛠️
 ########################################################################
 
 output "pool_okd_path" {
-  value       = libvirt_pool.okd.target.path
+  # ✅ CORREGIDO: El path ya no está en el atributo target.path, sino en .path
+  value       = libvirt_pool.okd.path
   description = "Ruta real del pool OKD"
 }
