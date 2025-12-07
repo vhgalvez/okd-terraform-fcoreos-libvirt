@@ -169,12 +169,6 @@ resource "libvirt_domain" "bootstrap" {
         mac = { address = var.bootstrap.mac }
       }
     ]
-
-    graphics = [{
-      type     = "vnc"
-      autoport = true
-      listen   = "0.0.0.0"
-    }]
   }
 }
 
@@ -210,11 +204,6 @@ resource "libvirt_domain" "master" {
         mac    = { address = var.master.mac }
       }
     ]
-    graphics = [{
-      type     = "vnc"
-      autoport = true
-      listen   = "0.0.0.0"
-    }]
   }
 }
 
