@@ -1,14 +1,14 @@
 # terraform/vm-coreos.tf
 ###############################################
-# BASE IMAGE FOR FEDORA COREOS
+# DISCO DEL NODO INFRA (AlmaLinux)
 ###############################################
-resource "libvirt_volume" "coreos_base" {
-  name = "fcos-base.qcow2"
+resource "libvirt_volume" "infra_disk" {
+  name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
   create = {
     content = {
-      url = var.coreos_image
+      url = var.almalinux_image
     }
   }
 
@@ -18,121 +18,99 @@ resource "libvirt_volume" "coreos_base" {
 }
 
 ###############################################
-# VM DISKS (Copy-on-write overlays)
+# CLOUD-INIT TEMPLATE
 ###############################################
-resource "libvirt_volume" "bootstrap_disk" {
-  name     = "bootstrap.qcow2"
-  pool     = libvirt_pool.okd.name
-  capacity = 107374182400
+data "template_file" "infra_cloud_init" {
+  template = file("${path.module}/files/cloud-init-infra.tpl")
 
-  backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
+  vars = {
+    hostname       = var.infra.hostname
+    short_hostname = split(".", var.infra.hostname)[0]
+
+    ip      = var.infra.ip
+    gateway = var.gateway
+
+    dns1 = var.dns1
+    dns2 = var.dns2
+
+    cluster_domain = var.cluster_domain
+    cluster_name   = var.cluster_name
+    cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
+
+    ssh_keys = join("\n", var.ssh_keys)
+    timezone = var.timezone
   }
-  target = { format = { type = "qcow2" } }
-}
-
-resource "libvirt_volume" "master_disk" {
-  name     = "master.qcow2"
-  pool     = libvirt_pool.okd.name
-  capacity = 107374182400
-
-  backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
-  }
-  target = { format = { type = "qcow2" } }
-}
-
-resource "libvirt_volume" "worker_disk" {
-  name     = "worker.qcow2"
-  pool     = libvirt_pool.okd.name
-  capacity = 107374182400
-
-  backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
-  }
-  target = { format = { type = "qcow2" } }
 }
 
 ###############################################
-# IGNITION RAW VOLUMES
+# CLOUD-INIT ISO
 ###############################################
-resource "libvirt_ignition" "bootstrap" {
-  name    = "bootstrap.ign"
-  content = file("${path.module}/../generated/ignition/bootstrap.ign")
+resource "libvirt_cloudinit_disk" "infra_init" {
+  name      = "infra-cloudinit"
+  user_data = data.template_file.infra_cloud_init.rendered
+
+  meta_data = yamlencode({
+    instance-id    = "okd-infra"
+    local-hostname = var.infra.hostname
+  })
 }
 
-resource "libvirt_ignition" "master" {
-  name    = "master.ign"
-  content = file("${path.module}/../generated/ignition/master.ign")
-}
-
-resource "libvirt_ignition" "worker" {
-  name    = "worker.ign"
-  content = file("${path.module}/../generated/ignition/worker.ign")
-}
-
-resource "libvirt_volume" "bootstrap_ignition" {
-  name = "bootstrap-ignition.raw"
+resource "libvirt_volume" "infra_cloudinit" {
+  name = "infra-cloudinit.iso"
   pool = libvirt_pool.okd.name
 
-  create = { content = { url = libvirt_ignition.bootstrap.path } }
-  target = { format = { type = "raw" } }
-}
+  create = {
+    content = {
+      url = libvirt_cloudinit_disk.infra_init.path
+    }
+  }
 
-resource "libvirt_volume" "master_ignition" {
-  name   = "master-ignition.raw"
-  pool   = libvirt_pool.okd.name
-  create = { content = { url = libvirt_ignition.master.path } }
-  target = { format = { type = "raw" } }
-}
-
-resource "libvirt_volume" "worker_ignition" {
-  name   = "worker-ignition.raw"
-  pool   = libvirt_pool.okd.name
-  create = { content = { url = libvirt_ignition.worker.path } }
-  target = { format = { type = "raw" } }
+  target = {
+    format = { type = "raw" }
+  }
 }
 
 ###############################################
-# LOCAL DEFINITIONS
+# VM INFRA (HAProxy + CoreDNS)
 ###############################################
-locals {
-  domain_os = {
+resource "libvirt_domain" "infra" {
+  name      = "okd-infra"
+  type      = "kvm"
+  vcpu      = var.infra.cpus
+  memory    = var.infra.memory
+  autostart = true
+
+  cpu = {
+    mode = "host-passthrough"
+  }
+
+  os = {
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
     boot_devices = [{ dev = "hd" }]
   }
 
-  cpu_conf = {
-    mode = "host-passthrough"
-  }
-}
-
-###############################################
-# BOOTSTRAP NODE
-###############################################
-resource "libvirt_domain" "bootstrap" {
-  name      = "okd-bootstrap"
-  type      = "kvm"
-  vcpu      = var.bootstrap.cpus
-  memory    = var.bootstrap.memory
-  autostart = true
-
-  os  = local.domain_os
-  cpu = local.cpu_conf
-
   devices = {
     disks = [
       {
-        source = { volume = { pool = libvirt_volume.bootstrap_disk.pool, volume = libvirt_volume.bootstrap_disk.name } }
+        # Disco principal de AlmaLinux
+        source = {
+          volume = {
+            pool   = libvirt_volume.infra_disk.pool
+            volume = libvirt_volume.infra_disk.name
+          }
+        }
         target = { dev = "vda", bus = "virtio" }
       },
       {
-        source = { volume = { pool = libvirt_volume.bootstrap_ignition.pool, volume = libvirt_volume.bootstrap_ignition.name } }
+        # Segundo disco: ISO cloud-init
+        source = {
+          volume = {
+            pool   = libvirt_volume.infra_cloudinit.pool
+            volume = libvirt_volume.infra_cloudinit.name
+          }
+        }
         target = { dev = "vdb", bus = "virtio" }
       }
     ]
@@ -141,93 +119,7 @@ resource "libvirt_domain" "bootstrap" {
       {
         model  = { type = "virtio" }
         source = { network = { network = libvirt_network.okd_net.name } }
-        mac    = { address = var.bootstrap.mac }
-      }
-    ]
-
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
-  }
-}
-
-###############################################
-# MASTER NODE
-###############################################
-resource "libvirt_domain" "master" {
-  name      = "okd-master"
-  type      = "kvm"
-  vcpu      = var.master.cpus
-  memory    = var.master.memory
-  autostart = true
-
-  os  = local.domain_os
-  cpu = local.cpu_conf
-
-  devices = {
-    disks = [
-      {
-        source = { volume = { pool = libvirt_volume.master_disk.pool, volume = libvirt_volume.master_disk.name } }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = { volume = { pool = libvirt_volume.master_ignition.pool, volume = libvirt_volume.master_ignition.name } }
-        target = { dev = "vdb", bus = "virtio" }
-      }
-    ]
-
-    interfaces = [
-      {
-        model  = { type = "virtio" }
-        source = { network = { network = libvirt_network.okd_net.name } }
-        mac    = { address = var.master.mac }
-      }
-    ]
-
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
-  }
-}
-
-###############################################
-# WORKER NODE
-###############################################
-resource "libvirt_domain" "worker" {
-  name      = "okd-worker"
-  type      = "kvm"
-  vcpu      = var.worker.cpus
-  memory    = var.worker.memory
-  autostart = true
-
-  os  = local.domain_os
-  cpu = local.cpu_conf
-
-  devices = {
-    disks = [
-      {
-        source = { volume = { pool = libvirt_volume.worker_disk.pool, volume = libvirt_volume.worker_disk.name } }
-        target = { dev = "vda", bus = "virtio" }
-      },
-      {
-        source = { volume = { pool = libvirt_volume.worker_ignition.pool, volume = libvirt_volume.worker_ignition.name } }
-        target = { dev = "vdb", bus = "virtio" }
-      }
-    ]
-
-    interfaces = [
-      {
-        model  = { type = "virtio" }
-        source = { network = { network = libvirt_network.okd_net.name } }
-        mac    = { address = var.worker.mac }
+        mac    = { address = var.infra.mac }
       }
     ]
 
