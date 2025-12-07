@@ -512,6 +512,14 @@ sudo systemctl status coredns
 sudo ss -lntp | egrep '53|80|443|6443|22623'
 
 # 4) DNS desde infra
-dig @10.56.0.10 api.okd-lab.cefaslocalserver.com
-dig @10.56.0.10 bootstrap.okd-lab.cefaslocalserver.com
-dig @10.56.0.10 api.okd-lab.cefaslocalserver.com
+dig @10.56.0.10 okd.okd.local SOA
+
+dig @10.56.0.10 api.okd.okd.local
+dig @10.56.0.10 api-int.okd.okd.local
+
+dig @10.56.0.10 bootstrap.okd.okd.local
+dig @10.56.0.10 master.okd.okd.local
+dig @10.56.0.10 worker.okd.okd.local
+
+dig @10.56.0.10 test.apps.okd.okd.local
+dig @10.56.0.10 apps.okd.okd.local
