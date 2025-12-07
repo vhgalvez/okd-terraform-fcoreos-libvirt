@@ -4,9 +4,8 @@
 # BASE IMAGE FOR FEDORA COREOS
 ###############################################
 resource "libvirt_volume" "coreos_base" {
-  name   = "fcos-base.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "fcos-base.qcow2"
+  pool = libvirt_pool.okd.name
 
   create = {
     content = {
@@ -19,9 +18,8 @@ resource "libvirt_volume" "coreos_base" {
 # VM DISKS (Copy-on-write overlays)
 ###############################################
 resource "libvirt_volume" "bootstrap_disk" {
-  name   = "bootstrap.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "bootstrap.qcow2"
+  pool = libvirt_pool.okd.name
 
   backing_store = {
     path   = libvirt_volume.coreos_base.path
@@ -30,9 +28,8 @@ resource "libvirt_volume" "bootstrap_disk" {
 }
 
 resource "libvirt_volume" "master_disk" {
-  name   = "master.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "master.qcow2"
+  pool = libvirt_pool.okd.name
 
   backing_store = {
     path   = libvirt_volume.coreos_base.path
@@ -41,9 +38,8 @@ resource "libvirt_volume" "master_disk" {
 }
 
 resource "libvirt_volume" "worker_disk" {
-  name   = "worker.qcow2"
-  pool   = libvirt_pool.okd.name
-  format = "qcow2"
+  name = "worker.qcow2"
+  pool = libvirt_pool.okd.name
 
   backing_store = {
     path   = libvirt_volume.coreos_base.path
@@ -51,183 +47,128 @@ resource "libvirt_volume" "worker_disk" {
   }
 }
 
-###############################################################
+###############################################
+# IGNITION DISKS (MUST FOLLOW DOCUMENTATION)
+###############################################
+resource "libvirt_volume" "bootstrap_ignition" {
+  name   = "bootstrap.ign"
+  pool   = libvirt_pool.okd.name
+  format = "raw"
+
+  create = {
+    content = {
+      url = libvirt_ignition.bootstrap.path
+    }
+  }
+}
+
+resource "libvirt_volume" "master_ignition" {
+  name   = "master.ign"
+  pool   = libvirt_pool.okd.name
+  format = "raw"
+
+  create = {
+    content = {
+      url = libvirt_ignition.master.path
+    }
+  }
+}
+
+resource "libvirt_volume" "worker_ignition" {
+  name   = "worker.ign"
+  pool   = libvirt_pool.okd.name
+  format = "raw"
+
+  create = {
+    content = {
+      url = libvirt_ignition.worker.path
+    }
+  }
+}
+
+###############################################
 # BOOTSTRAP NODE
-###############################################################
+###############################################
 resource "libvirt_domain" "bootstrap" {
-  name   = "okd-bootstrap"
-  memory = var.bootstrap.memory
-  vcpu   = var.bootstrap.cpus
-  type   = "kvm"
+  name    = "okd-bootstrap"
+  vcpu    = var.bootstrap.cpus
+  memory  = var.bootstrap.memory
+  machine = "q35"
+  arch    = "x86_64"
+
+  disk = [
+    { volume_id = libvirt_volume.bootstrap_disk.id },
+    { volume_id = libvirt_volume.bootstrap_ignition.id }
+  ]
+
+  network_interface = [{
+    network_id = libvirt_network.okd_net.id
+    mac        = var.bootstrap.mac
+    model      = "virtio"
+  }]
+
+  graphics = [{
+    type   = "vnc"
+    listen = "0.0.0.0"
+  }]
+
   autostart = true
-
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = ["hd"]
-  }
-
-  cpu = {
-    mode = "host-passthrough"
-  }
-
-  devices = {
-    disks = [
-      {
-        source = {
-          pool   = libvirt_volume.bootstrap_disk.pool
-          volume = libvirt_volume.bootstrap_disk.name
-        }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
-      }
-    ]
-
-    interfaces = [
-      {
-        model = {
-          type = "virtio"
-        }
-        source = {
-          network = {
-            network = libvirt_network.okd_net.name
-          }
-        }
-        mac = var.bootstrap.mac
-      }
-    ]
-
-    graphics = {
-      vnc = {
-        listen   = "0.0.0.0"
-        autoport = true
-      }
-    }
-  }
-
-  # IGNITION: nueva sintaxis
-  ignition = libvirt_ignition.bootstrap.path
 }
 
-###############################################################
+###############################################
 # MASTER NODE
-###############################################################
+###############################################
 resource "libvirt_domain" "master" {
-  name   = "okd-master"
-  memory = var.master.memory
-  vcpu   = var.master.cpus
-  type   = "kvm"
+  name    = "okd-master"
+  vcpu    = var.master.cpus
+  memory  = var.master.memory
+  machine = "q35"
+  arch    = "x86_64"
+
+  disk = [
+    { volume_id = libvirt_volume.master_disk.id },
+    { volume_id = libvirt_volume.master_ignition.id }
+  ]
+
+  network_interface = [{
+    network_id = libvirt_network.okd_net.id
+    mac        = var.master.mac
+    model      = "virtio"
+  }]
+
+  graphics = [{
+    type   = "vnc"
+    listen = "0.0.0.0"
+  }]
+
   autostart = true
-
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = ["hd"]
-  }
-
-  cpu = {
-    mode = "host-passthrough"
-  }
-
-  devices = {
-    disks = [
-      {
-        source = {
-          pool   = libvirt_volume.master_disk.pool
-          volume = libvirt_volume.master_disk.name
-        }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
-      }
-    ]
-
-    interfaces = [
-      {
-        model = {
-          type = "virtio"
-        }
-        source = {
-          network = {
-            network = libvirt_network.okd_net.name
-          }
-        }
-        mac = var.master.mac
-      }
-    ]
-
-    graphics = {
-      vnc = {
-        listen   = "0.0.0.0"
-        autoport = true
-      }
-    }
-  }
-
-  ignition = libvirt_ignition.master.path
 }
 
-###############################################################
+###############################################
 # WORKER NODE
-###############################################################
+###############################################
 resource "libvirt_domain" "worker" {
-  name   = "okd-worker"
-  memory = var.worker.memory
-  vcpu   = var.worker.cpus
-  type   = "kvm"
+  name    = "okd-worker"
+  vcpu    = var.worker.cpus
+  memory  = var.worker.memory
+  machine = "q35"
+  arch    = "x86_64"
+
+  disk = [
+    { volume_id = libvirt_volume.worker_disk.id },
+    { volume_id = libvirt_volume.worker_ignition.id }
+  ]
+
+  network_interface = [{
+    network_id = libvirt_network.okd_net.id
+    mac        = var.worker.mac
+    model      = "virtio"
+  }]
+
+  graphics = [{
+    type   = "vnc"
+    listen = "0.0.0.0"
+  }]
+
   autostart = true
-
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = ["hd"]
-  }
-
-  cpu = {
-    mode = "host-passthrough"
-  }
-
-  devices = {
-    disks = [
-      {
-        source = {
-          pool   = libvirt_volume.worker_disk.pool
-          volume = libvirt_volume.worker_disk.name
-        }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
-      }
-    ]
-
-    interfaces = [
-      {
-        model = {
-          type = "virtio"
-        }
-        source = {
-          network = {
-            network = libvirt_network.okd_net.name
-          }
-        }
-        mac = var.worker.mac
-      }
-    ]
-
-    graphics = {
-      vnc = {
-        listen   = "0.0.0.0"
-        autoport = true
-      }
-    }
-  }
-
-  ignition = libvirt_ignition.worker.path
 }

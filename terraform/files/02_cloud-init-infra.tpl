@@ -9,8 +9,7 @@ users:
   - default
 
   - name: root
-    ssh_authorized_keys:
-      ${ssh_keys}
+    ssh_authorized_keys: ${ssh_keys}
 
   - name: core
     gecos: "Core User"
@@ -18,15 +17,13 @@ users:
     groups: [wheel]
     shell: /bin/bash
     lock_passwd: false
-    ssh_authorized_keys:
-      ${ssh_keys}
+    ssh_authorized_keys: ${ssh_keys}
 
 growpart:
   mode: auto
   devices: ["/"]
 
 resize_rootfs: true
-
 
 ###########################################################
 # WRITE_FILES
@@ -35,7 +32,7 @@ resize_rootfs: true
 write_files:
 
   #────────────────────────────────────────────────────────
-  # NetworkManager: IP fija + DNS
+  # NetworkManager — IP fija + DNS interno OKD
   #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
@@ -70,7 +67,7 @@ write_files:
       echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
   #────────────────────────────────────────────────────────
-  # sysctl requerido para OKD
+  # sysctl (OKD requiere esto)
   #────────────────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
@@ -79,7 +76,7 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
 
   #────────────────────────────────────────────────────────
-  # evitar override de resolv.conf
+  # NetworkManager — impedir override de resolv.conf
   #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
@@ -88,7 +85,7 @@ write_files:
       dns=none
 
   #────────────────────────────────────────────────────────
-  # CoreDNS: zona principal
+  # CoreDNS — Corefile
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
@@ -101,7 +98,7 @@ write_files:
       }
 
   #────────────────────────────────────────────────────────
-  # Base de datos DNS OKD
+  # CoreDNS — Base de zona DNS OKD
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
@@ -126,7 +123,7 @@ write_files:
       *.apps      IN A 10.56.0.13
 
   #────────────────────────────────────────────────────────
-  # CoreDNS servicio systemd
+  # CoreDNS — systemd service
   #────────────────────────────────────────────────────────
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
@@ -139,12 +136,13 @@ write_files:
       [Service]
       ExecStart=/usr/local/bin/coredns -conf=/etc/coredns/Corefile
       Restart=always
+      LimitNOFILE=1048576
 
       [Install]
       WantedBy=multi-user.target
 
   #────────────────────────────────────────────────────────
-  # HAProxy configuración OKD
+  # HAProxy correcto para OKD
   #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
@@ -152,6 +150,7 @@ write_files:
       global
         log /dev/log local0
         maxconn 20000
+        daemon
 
       defaults
         mode tcp
@@ -167,8 +166,8 @@ write_files:
       backend api_nodes
         balance roundrobin
         option tcp-check
-        server bootstrap 10.56.0.11:6443 check
-        server master    10.56.0.12:6443 check
+        server bootstrap 10.56.0.11:6443 check fall 3 rise 2
+        server master    10.56.0.12:6443 check fall 3 rise 2
 
       frontend mcs
         bind 0.0.0.0:22623
@@ -176,7 +175,7 @@ write_files:
 
       backend mcs_nodes
         balance roundrobin
-        server bootstrap 10.56.0.11:22623 check
+        server bootstrap 10.56.0.11:22623 check fall 3 rise 2
 
       frontend ingress80
         bind 0.0.0.0:80
@@ -191,24 +190,52 @@ write_files:
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
 
-
 ###########################################################
 # RUNCMD
 ###########################################################
 
 runcmd:
+
+  # Swap
+  - fallocate -l 4G /swapfile
+  - chmod 600 /swapfile
+  - mkswap /swapfile
+  - swapon /swapfile
+  - echo "/swapfile none swap sw 0 0" >> /etc/fstab
+
+  # Hosts
+  - /usr/local/bin/set-hosts.sh
+
+  # Network reload
+  - nmcli connection reload
+  - bash -c "nmcli connection down eth0 || true"
+  - nmcli connection up eth0
+
+  # Paquetes necesarios
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
+  - sysctl --system
+
+  # resolv.conf correcto
   - rm -f /etc/resolv.conf
   - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
 
+  # CoreDNS instalación
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - chmod +x /usr/local/bin/coredns
+  - rm -f /tmp/coredns.tgz
 
+  # SELinux
+  - setsebool -P haproxy_connect_any 1
+  - setsebool -P httpd_can_network_connect 1
+  - semanage port -a -t http_port_t -p tcp 6443 || true
+  - semanage port -a -t http_port_t -p tcp 22623 || true
+
+  # Services
   - systemctl daemon-reload
-  - systemctl enable chronyd firewalld coredns haproxy
-  - systemctl restart chronyd firewalld coredns haproxy
+  - systemctl enable NetworkManager firewalld chronyd coredns haproxy
+  - systemctl restart NetworkManager firewalld chronyd coredns haproxy
 
 timezone: ${timezone}

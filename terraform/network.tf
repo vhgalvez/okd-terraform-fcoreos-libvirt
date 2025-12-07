@@ -1,50 +1,67 @@
 # terraform/network.tf
+
 resource "libvirt_network" "okd_net" {
-  name    = var.network_name
-  bridge  = "virbr_okd"  # Usamos solo el nombre del bridge (sin bloques)
-  domain  = "${var.cluster_name}.${var.cluster_domain}"
-
-  # No se utiliza "mode" directamente en 0.9.1
-  # Red con un rango de direcciones
-  addresses = [var.network_cidr]
-
+  name      = var.network_name
   autostart = true
 
-  # Configuración DHCP simplificada
-  dhcp {
-    enabled = true
-
-    host {
-      mac  = var.bootstrap.mac
-      name = "bootstrap"
-      ip   = var.bootstrap.ip
-    }
-
-    host {
-      mac  = var.master.mac
-      name = "master"
-      ip   = var.master.ip
-    }
-
-    host {
-      mac  = var.worker.mac
-      name = "worker"
-      ip   = var.worker.ip
-    }
-
-    host {
-      mac  = var.infra.mac
-      name = "infra"
-      ip   = var.infra.ip
-    }
+  # Bridge de la red
+  bridge = {
+    name = "virbr_okd"
   }
 
-  # Configuración de DNS
-  dns {
-    enabled    = true
-    local_only = false
-    forwarders {
-      address = var.infra_ip
+  # Dominio DNS del cluster
+  domain = {
+    name = "${var.cluster_name}.${var.cluster_domain}"
+    local_only = "yes"
+  }
+
+  # Configuración de IP y DHCP
+  ips = [{
+    family  = "ipv4"
+    address = cidrhost(var.network_cidr, 1)  # Ej: 10.56.0.1
+    netmask = cidrnetmask(var.network_cidr)
+
+    dhcp = {
+      hosts = [
+        {
+          mac  = var.bootstrap.mac
+          ip   = var.bootstrap.ip
+          name = "bootstrap"
+        },
+        {
+          mac  = var.master.mac
+          ip   = var.master.ip
+          name = "master"
+        },
+        {
+          mac  = var.worker.mac
+          ip   = var.worker.ip
+          name = "worker"
+        },
+        {
+          mac  = var.infra.mac
+          ip   = var.infra.ip
+          name = "infra"
+        }
+      ]
     }
+  }]
+
+  # DNS embebido de libvirt
+  dns = {
+    host = [
+      {
+        ip = var.infra.ip
+        hostnames = [
+          { hostname = "infra" }
+        ]
+      }
+    ]
+
+    forwarders = [
+      {
+        addr = var.infra_ip  # Forward hacia CoreDNS del nodo infra
+      }
+    ]
   }
 }

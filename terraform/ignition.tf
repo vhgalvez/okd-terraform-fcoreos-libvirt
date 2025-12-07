@@ -2,19 +2,16 @@
 # Cargar Ignition generada por openshift-install
 
 resource "libvirt_ignition" "bootstrap" {
-  name    = "bootstrap.ign"
-  pool    = libvirt_pool.okd.name  # No "pool_name", usar "pool"
+  name    = "bootstrap"
   content = file("${path.module}/../generated/ignition/bootstrap.ign")
 }
 
 resource "libvirt_ignition" "master" {
-  name    = "master.ign"
-  pool    = libvirt_pool.okd.name  # No "pool_name", usar "pool"
+  name    = "master"
   content = file("${path.module}/../generated/ignition/master.ign")
 }
 
 resource "libvirt_ignition" "worker" {
-  name    = "worker.ign"
-  pool    = libvirt_pool.okd.name  # No "pool_name", usar "pool"
+  name    = "worker"
   content = file("${path.module}/../generated/ignition/worker.ign")
 }
