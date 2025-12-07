@@ -1,36 +1,62 @@
 # terraform/vm-coreos.tf
 
-#############################################
-# BASE COREOS IMAGE
-#############################################
+###############################################
+# BASE IMAGE FOR FEDORA COREOS
+###############################################
 
 resource "libvirt_volume" "coreos_base" {
-  name   = "fcos-base"
-  source = var.coreos_image
+  name   = "fcos-base.qcow2"
   pool   = libvirt_pool.okd.name
+  source = var.coreos_image
 }
+
+###############################################
+# VM DISKS
+###############################################
 
 resource "libvirt_volume" "bootstrap_disk" {
   name           = "bootstrap.qcow2"
-  base_volume_id = libvirt_volume.coreos_base.id
   pool           = libvirt_pool.okd.name
+  base_volume_id = libvirt_volume.coreos_base.id
 }
 
 resource "libvirt_volume" "master_disk" {
   name           = "master.qcow2"
-  base_volume_id = libvirt_volume.coreos_base.id
   pool           = libvirt_pool.okd.name
+  base_volume_id = libvirt_volume.coreos_base.id
 }
 
 resource "libvirt_volume" "worker_disk" {
   name           = "worker.qcow2"
-  base_volume_id = libvirt_volume.coreos_base.id
   pool           = libvirt_pool.okd.name
+  base_volume_id = libvirt_volume.coreos_base.id
 }
 
-#############################################
+###############################################
+# IGNITION USING NEW SYNTAX
+###############################################
+
+resource "libvirt_ignition" "bootstrap" {
+  name      = "bootstrap.ign"
+  pool_name = libvirt_pool.okd.name
+  content   = file("${path.module}/../generated/ignition/bootstrap.ign")
+}
+
+resource "libvirt_ignition" "master" {
+  name      = "master.ign"
+  pool_name = libvirt_pool.okd.name
+  content   = file("${path.module}/../generated/ignition/master.ign")
+}
+
+resource "libvirt_ignition" "worker" {
+  name      = "worker.ign"
+  pool_name = libvirt_pool.okd.name
+  content   = file("${path.module}/../generated/ignition/worker.ign")
+}
+
+###############################################################
 # BOOTSTRAP NODE
-#############################################
+###############################################################
 
 resource "libvirt_domain" "bootstrap" {
   name      = "okd-bootstrap"
@@ -43,8 +69,8 @@ resource "libvirt_domain" "bootstrap" {
   }
 
   network_interface {
-    network_id = libvirt_network.okd_net.id
-    mac        = var.bootstrap.mac
+    network_name = libvirt_network.okd_net.name
+    mac          = var.bootstrap.mac
   }
 
   disk {
@@ -53,11 +79,9 @@ resource "libvirt_domain" "bootstrap" {
 
   coreos_ignition = libvirt_ignition.bootstrap.id
 
-  graphics {
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
+  graphics = {
+    type   = "vnc"
+    listen = "0.0.0.0"
   }
 
   video {
@@ -71,9 +95,9 @@ resource "libvirt_domain" "bootstrap" {
   }
 }
 
-#############################################
+###############################################################
 # MASTER NODE
-#############################################
+###############################################################
 
 resource "libvirt_domain" "master" {
   name      = "okd-master"
@@ -86,8 +110,8 @@ resource "libvirt_domain" "master" {
   }
 
   network_interface {
-    network_id = libvirt_network.okd_net.id
-    mac        = var.master.mac
+    network_name = libvirt_network.okd_net.name
+    mac          = var.master.mac
   }
 
   disk {
@@ -96,11 +120,9 @@ resource "libvirt_domain" "master" {
 
   coreos_ignition = libvirt_ignition.master.id
 
-  graphics {
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
+  graphics = {
+    type   = "vnc"
+    listen = "0.0.0.0"
   }
 
   video {
@@ -114,9 +136,9 @@ resource "libvirt_domain" "master" {
   }
 }
 
-#############################################
+###############################################################
 # WORKER NODE
-#############################################
+###############################################################
 
 resource "libvirt_domain" "worker" {
   name      = "okd-worker"
@@ -129,8 +151,8 @@ resource "libvirt_domain" "worker" {
   }
 
   network_interface {
-    network_id = libvirt_network.okd_net.id
-    mac        = var.worker.mac
+    network_name = libvirt_network.okd_net.name
+    mac          = var.worker.mac
   }
 
   disk {
@@ -139,11 +161,9 @@ resource "libvirt_domain" "worker" {
 
   coreos_ignition = libvirt_ignition.worker.id
 
-  graphics {
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
+  graphics = {
+    type   = "vnc"
+    listen = "0.0.0.0"
   }
 
   video {

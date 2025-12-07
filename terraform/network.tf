@@ -1,53 +1,61 @@
 # terraform/network.tf
-
 resource "libvirt_network" "okd_net" {
-  name   = var.network_name
-  mode   = "nat"
-  bridge = "virbr_okd"
+  name = var.network_name
+  mode = "nat"
 
-  # Dominio DNS: okd.okd.local
-  domain = "${var.cluster_name}.${var.cluster_domain}"
+  bridge = {
+    name = "virbr_okd"
+  }
 
-  addresses = [var.network_cidr]
+  domain = {
+    name = "${var.cluster_name}.${var.cluster_domain}"
+  }
+
+  addresses = [{
+    address = var.network_cidr
+  }]
+
   autostart = true
 
   #############################################
-  # DHCP para nodos FCOS (Bootstrap, Master, Worker)
+  # DHCP — Sintaxis nueva completa (libvirt 0.9.1)
   #############################################
-  dhcp {
+  dhcp = {
     enabled = true
 
-    # BOOTSTRAP
-    host {
-      mac  = var.bootstrap.mac
-      name = "bootstrap"
-      ip   = var.bootstrap.ip
-    }
-
-    # MASTER
-    host {
-      mac  = var.master.mac
-      name = "master"
-      ip   = var.master.ip
-    }
-
-    # WORKER
-    host {
-      mac  = var.worker.mac
-      name = "worker"
-      ip   = var.worker.ip
-    }
+    hosts = [
+      {
+        mac  = var.bootstrap.mac
+        name = "bootstrap"
+        ip   = var.bootstrap.ip
+      },
+      {
+        mac  = var.master.mac
+        name = "master"
+        ip   = var.master.ip
+      },
+      {
+        mac  = var.worker.mac
+        name = "worker"
+        ip   = var.worker.ip
+      },
+      {
+        mac  = var.infra.mac
+        name = "infra"
+        ip   = var.infra.ip
+      }
+    ]
   }
 
   #############################################
-  # DNS FORWARDER → Va al nodo infra (IP fija via cloud-init)
+  # DNS FORWARDER → redirige al nodo infra
   #############################################
-  dns {
+  dns = {
     enabled    = true
     local_only = false
 
-    forwarders {
-      address = var.infra_ip # 10.56.0.10
-    }
+    forwarders = [{
+      address = var.infra_ip
+    }]
   }
 }

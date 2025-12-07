@@ -21,12 +21,13 @@ data "template_file" "infra_cloud_init" {
 
     ip      = var.infra.ip
     gateway = var.gateway
-    dns1    = var.dns1
-    dns2    = var.dns2
 
-    cluster_domain = var.cluster_domain                          # "okd.local"
-    cluster_name   = var.cluster_name                            # "okd"
-    cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}" # "okd.okd.local" 👈
+    dns1 = var.dns1
+    dns2 = var.dns2
+
+    cluster_domain = var.cluster_domain
+    cluster_name   = var.cluster_name
+    cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
 
     ssh_keys = join("\n", var.ssh_keys)
     timezone = var.timezone
@@ -52,22 +53,19 @@ resource "libvirt_domain" "infra" {
   }
 
   network_interface {
-    network_id = libvirt_network.okd_net.id
-    addresses  = [var.infra.ip] # OK usar esto
+    network_name = libvirt_network.okd_net.name
+    mac          = var.infra.mac
   }
 
   disk {
     volume_id = libvirt_volume.infra_disk.id
   }
 
-  cloudinit = libvirt_cloudinit_disk.infra_init.id
+  cloudinit_disk = libvirt_cloudinit_disk.infra_init.id
 
-  # Forzar VNC
-  graphics {
-    type           = "vnc"
-    autoport       = true
-    listen_type    = "address"
-    listen_address = "0.0.0.0"
+  graphics = {
+    type   = "vnc"
+    listen = "0.0.0.0"
   }
 
   video {

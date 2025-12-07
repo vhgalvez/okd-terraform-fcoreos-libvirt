@@ -1,8 +1,8 @@
 # terraform/variables.tf
 
-# ================================
-#  RED
-# ================================
+#############################################
+# RED
+#############################################
 variable "network_name" {
   description = "Nombre de la red libvirt para OKD"
   type        = string
@@ -15,17 +15,17 @@ variable "network_cidr" {
   default     = "10.56.0.0/24"
 }
 
-# ================================
-#  SSH KEYS
-# ================================
+#############################################
+# SSH KEYS
+#############################################
 variable "ssh_keys" {
   description = "Lista de claves públicas SSH autorizadas"
   type        = list(string)
 }
 
-# ================================
-#  INFRA NODE (AlmaLinux)
-# ================================
+#############################################
+# NODO INFRA (AlmaLinux)
+#############################################
 variable "infra" {
   description = "Configuración del nodo infra"
   type = object({
@@ -37,9 +37,9 @@ variable "infra" {
   })
 }
 
-# ================================
-#  BOOTSTRAP NODE (FCOS)
-# ================================
+#############################################
+# BOOTSTRAP NODE (FCOS)
+#############################################
 variable "bootstrap" {
   description = "Configuración del nodo bootstrap"
   type = object({
@@ -50,9 +50,9 @@ variable "bootstrap" {
   })
 }
 
-# ================================
-#  MASTER NODE (FCOS)
-# ================================
+#############################################
+# MASTER NODE (FCOS)
+#############################################
 variable "master" {
   description = "Configuración del nodo master"
   type = object({
@@ -63,9 +63,9 @@ variable "master" {
   })
 }
 
-# ================================
-#  WORKER NODE (FCOS)
-# ================================
+#############################################
+# WORKER NODE (FCOS)
+#############################################
 variable "worker" {
   description = "Configuración del nodo worker"
   type = object({
@@ -76,9 +76,9 @@ variable "worker" {
   })
 }
 
-# ================================
-#  IMÁGENES
-# ================================
+#############################################
+# IMÁGENES BASE
+#############################################
 variable "coreos_image" {
   description = "Ruta al archivo qcow2 de Fedora CoreOS"
   type        = string
@@ -89,9 +89,9 @@ variable "almalinux_image" {
   type        = string
 }
 
-# ================================
-#  DNS / RED
-# ================================
+#############################################
+# DNS / RED
+#############################################
 variable "dns1" {
   description = "DNS primario para la red"
   type        = string
@@ -107,8 +107,11 @@ variable "gateway" {
   type        = string
 }
 
+#############################################
+# CLUSTER OKD INFO
+#############################################
 variable "cluster_domain" {
-  description = "Dominio base del clúster OKD"
+  description = "Dominio base del clúster OKD (ej. okd.local)"
   type        = string
 }
 
@@ -117,11 +120,17 @@ variable "cluster_name" {
   type        = string
 }
 
+#############################################
+# IP del nodo infra (para DNS forwarder)
+#############################################
 variable "infra_ip" {
   description = "IP del servidor infra (DNS + NTP)"
   type        = string
 }
 
+#############################################
+# ZONA HORARIA
+#############################################
 variable "timezone" {
   description = "Zona horaria del sistema"
   type        = string

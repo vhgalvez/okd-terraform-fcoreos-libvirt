@@ -1,4 +1,5 @@
 # terraform/main.tf
+
 #############################################
 #            TERRAFORM CONFIG
 #############################################
@@ -25,26 +26,19 @@ provider "libvirt" {
 }
 
 #############################################
-#         LIBVIRT POOL PARA OKD
-#    Almacenará discos e Ignitions
+#         LIBVIRT POOL (NUEVA SINTAXIS)
 #############################################
 resource "libvirt_pool" "okd" {
-  name = "okd"
-  type = "dir"
+  name   = "okd"
+  type   = "dir"
 
-  # Reemplazo correcto para path (evita warning)
-  target {
-    path = "/var/lib/libvirt/images/okd"
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
+  # En 0.9.1 se usa target = "ruta" (NO block)
+  target = "/var/lib/libvirt/images/okd"
 }
 
 #############################################
-#           OPTIONAL OUTPUTS
+#               OUTPUTS
 #############################################
 output "pool_okd_path" {
-  value = libvirt_pool.okd.target[0].path
+  value = libvirt_pool.okd.target
 }
