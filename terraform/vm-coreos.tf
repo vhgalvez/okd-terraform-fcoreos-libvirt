@@ -17,7 +17,6 @@ resource "libvirt_volume" "coreos_base" {
   }
 }
 
-------------------------------------------------
 # VM DISKS (Copy-on-write overlays)
 ###############################################
 resource "libvirt_volume" "bootstrap_disk" {
@@ -56,7 +55,6 @@ resource "libvirt_volume" "worker_disk" {
   target { format = "qcow2" } # CORRECCIÓN
 }
 
-------------------------------------------------
 # IGNITION RAW VOLUMES
 ###############################################
 resource "libvirt_ignition" "bootstrap" {
@@ -96,7 +94,6 @@ resource "libvirt_volume" "worker_ignition" {
   target { format = "raw" } # CORRECCIÓN
 }
 
-------------------------------------------------
 # LOCAL DEFINITIONS
 ###############################################
 locals {
@@ -112,7 +109,6 @@ locals {
   }
 }
 
-------------------------------------------------
 # BOOTSTRAP NODE
 ###############################################
 resource "libvirt_domain" "bootstrap" {
@@ -165,7 +161,6 @@ resource "libvirt_domain" "bootstrap" {
   }
 }
 
-------------------------------------------------
 # MASTER NODE
 ###############################################
 resource "libvirt_domain" "master" {
@@ -218,7 +213,6 @@ resource "libvirt_domain" "master" {
   }
 }
 
-------------------------------------------------
 # WORKER NODE
 ###############################################
 resource "libvirt_domain" "worker" {
