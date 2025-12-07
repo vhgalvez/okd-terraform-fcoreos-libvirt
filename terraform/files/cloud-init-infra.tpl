@@ -7,10 +7,8 @@ disable_root: false
 
 users:
   - default
-
   - name: root
     ssh_authorized_keys: ${ssh_keys}
-
   - name: core
     gecos: "Core User"
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
@@ -31,9 +29,9 @@ resize_rootfs: true
 
 write_files:
 
-  #----------------------------------------------------------
-  # NetworkManager — IP fija + DNS interno OK
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
+  # NetworkManager — IP estática + DNS externo (TEMPORAL)
+  #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
     content: |
@@ -46,73 +44,72 @@ write_files:
       [ipv4]
       method=manual
       address1=${ip}/24,${gateway}
-      dns=${dns1};${dns2}
-      dns-search=okd-lab.okd.local
+      dns=8.8.8.8;1.1.1.1
+      dns-search=okd-lab.${cluster_domain}
       may-fail=false
       route-metric=10
 
       [ipv6]
       method=ignore
 
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
   # /etc/hosts dinámico
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
   - path: /usr/local/bin/set-hosts.sh
     permissions: "0755"
     content: |
       #!/bin/bash
       SHORT=$(echo "${hostname}" | cut -d'.' -f1)
-      echo "127.0.0.1   localhost" > /etc/hosts
-      echo "::1         localhost" >> /etc/hosts
-      echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
+      echo "127.0.0.1 localhost" > /etc/hosts
+      echo "::1       localhost" >> /etc/hosts
+      echo "${ip} ${hostname} $SHORT" >> /etc/hosts
 
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
   # sysctl
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
     content: |
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
 
-  #----------------------------------------------------------
-  # NetworkManager — no tocar resolv.conf
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
+  # (IMPORTANTE) NetworkManager debe manejar resolv.conf
+  #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
     content: |
       [main]
-      dns=none
+      dns=default
 
-  #----------------------------------------------------------
-  # CoreDNS — Corefile (zona interna + forwarders)
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
+  # CoreDNS — Corefile
+  #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
-      okd-lab.okd.local {
+      okd-lab.${cluster_domain} {
         file /etc/coredns/db.okd
       }
       . {
         forward . 8.8.8.8 1.1.1.1
       }
 
-  #----------------------------------------------------------
-  # CoreDNS zona con registros OKD
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
+  # CoreDNS — Zona
+  #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
-      $ORIGIN okd-lab.okd.local.
-      @   IN  SOA dns.okd-lab.okd.local. admin.okd-lab.okd.local. (
+      $ORIGIN okd-lab.${cluster_domain}.
+      @   IN  SOA dns.okd-lab.${cluster_domain}. admin.okd-lab.${cluster_domain}. (
               2025010101
               7200
               3600
               1209600
               3600 )
-      @       IN NS dns.okd-lab.okd.local.
-
-      dns         IN A ${ip}
+      @       IN NS dns.okd-lab.${cluster_domain}.
+      dns     IN A ${ip}
 
       api         IN A 10.56.0.11
       api-int     IN A 10.56.0.11
@@ -123,9 +120,9 @@ write_files:
 
       *.apps      IN A 10.56.0.13
 
-  #----------------------------------------------------------
-  # CoreDNS systemd service — usa /opt/coredns
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
+  # CoreDNS — systemd service
+  #────────────────────────────────────────────────────────
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
     content: |
@@ -135,17 +132,16 @@ write_files:
       Wants=network-online.target
 
       [Service]
-      Type=simple
       ExecStart=/opt/coredns/coredns -conf=/etc/coredns/Corefile
-      Restart=on-failure
+      Restart=always
       LimitNOFILE=1048576
 
       [Install]
       WantedBy=multi-user.target
 
-  #----------------------------------------------------------
-  # HAProxy para OKD
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
+  # HAProxy
+  #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
     content: |
@@ -192,9 +188,9 @@ write_files:
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
 
-  #----------------------------------------------------------
-  # Chrony NTP
-  #----------------------------------------------------------
+  #────────────────────────────────────────────────────────
+  # Chrony
+  #────────────────────────────────────────────────────────
   - path: /etc/chrony.conf
     permissions: "0644"
     content: |
@@ -222,54 +218,33 @@ runcmd:
   # Hosts
   - /usr/local/bin/set-hosts.sh
 
-  # NetworkManager reload
+  # Recargar red
   - nmcli connection reload
   - bash -c "nmcli connection down eth0 || true"
   - nmcli connection up eth0
 
-  # Paquetes requeridos
+  # Paquetes necesarios
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
+  # sysctl
   - sysctl --system
 
-  # resolv.conf coherente
-  - rm -f /etc/resolv.conf
-  - printf "nameserver 127.0.0.1\nnameserver 10.56.0.10\nsearch okd-lab.okd.local okd.local\n" > /etc/resolv.conf
-
-  #----------------------------------------------------------
-  # CoreDNS instalación — FIX FINAL
-  #----------------------------------------------------------
-  - mkdir -p /etc/coredns
+  #────────────────────────────────────────────────────────
+  # CoreDNS instalación 100% fiable
+  #────────────────────────────────────────────────────────
   - mkdir -p /opt/coredns
-
-  # descargar binario
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
-
-  # extraer binario (contenedor único "coredns")
   - tar -xzf /tmp/coredns.tgz -C /tmp
-
-  # mover binario a /opt/coredns (NO /usr/local/bin — bloqueado en AlmaLinux 9 cloud-init)
   - mv /tmp/coredns /opt/coredns/coredns
-
   - chmod +x /opt/coredns/coredns
-  - restorecon -RF /opt/coredns
-
   - rm -f /tmp/coredns.tgz
 
-  #----------------------------------------------------------
-  # SELinux ajustes
-  #----------------------------------------------------------
-  - setsebool -P haproxy_connect_any 1
-  - setsebool -P httpd_can_network_connect 1
-  - semanage port -a -t http_port_t -p tcp 6443 || true
-  - semanage port -a -t http_port_t -p tcp 22623 || true
+  #────────────────────────────────────────────────────────
+  # AHORA sí cambiar resolv.conf para DNS interno
+  #────────────────────────────────────────────────────────
+  - printf "nameserver 127.0.0.1\nnameserver ${ip}\nsearch okd-lab.${cluster_domain}\n" > /etc/resolv.conf
 
-  # activar servicios
-  - systemctl daemon-reload
-  - systemctl enable NetworkManager firewalld chronyd coredns haproxy
-  - systemctl restart NetworkManager firewalld chronyd coredns haproxy
-
-  # Firewall OKD
+  # Firewall
   - firewall-cmd --permanent --add-port=53/tcp
   - firewall-cmd --permanent --add-port=53/udp
   - firewall-cmd --permanent --add-port=80/tcp
@@ -277,5 +252,10 @@ runcmd:
   - firewall-cmd --permanent --add-port=6443/tcp
   - firewall-cmd --permanent --add-port=22623/tcp
   - firewall-cmd --reload
+
+  # Servicios
+  - systemctl daemon-reload
+  - systemctl enable firewalld chronyd coredns haproxy
+  - systemctl restart firewalld chronyd coredns haproxy
 
 timezone: ${timezone}
