@@ -1,5 +1,4 @@
 # terraform/main.tf
-# terraform/main.tf
 ########################################################################
 # TERRAFORM BACKEND + PROVIDERS
 ########################################################################
@@ -35,8 +34,10 @@ resource "libvirt_pool" "okd" {
   name = "okd"
   type = "dir"
 
-  # ✅ CORRECCIÓN: Se usa 'target' como argumento simple (string), ya que el bloque 'target {}' y el argumento 'path' fueron rechazados.
-  target = "/var/lib/libvirt/images/okd"
+  # ✅ CORRECCIÓN: Volvemos al bloque 'target {}', ya que el último error (`target = "..."`) exigió un objeto (mapa).
+  target {
+    path = "/var/lib/libvirt/images/okd"
+  }
 }
 
 ########################################################################
@@ -44,7 +45,7 @@ resource "libvirt_pool" "okd" {
 ########################################################################
 
 output "pool_okd_path" {
-  # ✅ CORRECCIÓN: El valor se extrae del atributo 'target' simple.
-  value       = libvirt_pool.okd.target
+  # ✅ CORRECCIÓN: El valor se extrae del bloque target.path.
+  value       = libvirt_pool.okd.target.path
   description = "Ruta real del pool OKD"
 }

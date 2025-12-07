@@ -36,8 +36,8 @@ resource "libvirt_cloudinit_disk" "infra_init" {
     local-hostname = var.infra.hostname
   })
 
-  # ✅ CORRECCIÓN: Se cambia 'pool' (fallido) por el argumento 'pool_name'.
-  pool_name = libvirt_pool.okd.name
+  # ✅ CORRECCIÓN: Volvemos al argumento 'pool' (es la convención más común que falló en el último intento, pero 'pool_name' también falló).
+  pool = libvirt_pool.okd.name
 }
 
 resource "libvirt_domain" "infra" {
@@ -46,28 +46,29 @@ resource "libvirt_domain" "infra" {
   memory = var.infra.memory
   type   = "kvm"
 
-  # ✅ CORRECCIÓN: 'os' es un argumento (mapa).
   os = {
     type = "hvm"
     arch = "x86_64"
   }
 
-  # ✅ CORRECCIÓN: 'disk' usa Bloques HCL anidados.
-  disk { volume_id = libvirt_volume.infra_disk.id }
-  disk { volume_id = libvirt_cloudinit_disk.infra_init.id }
+  # ✅ CORRECCIÓN: 'disk' usa Lista de Mapas (argumento).
+  disk = [
+    { volume_id = libvirt_volume.infra_disk.id },
+    { volume_id = libvirt_cloudinit_disk.infra_init.id }
+  ]
 
-  # ✅ CORRECCIÓN: 'network_interface' usa Bloque HCL anidado.
-  network_interface {
+  # ✅ CORRECCIÓN: 'network_interface' usa Lista de Mapas (argumento).
+  network_interface = [{
     network_id = libvirt_network.okd_net.id
     mac        = var.infra.mac
     model      = "virtio"
-  }
+  }]
 
-  # ✅ CORRECCIÓN: 'graphics' usa Bloque HCL anidado.
-  graphics {
+  # ✅ CORRECCIÓN: 'graphics' usa Lista de Mapas (argumento).
+  graphics = [{
     type   = "vnc"
     listen = "0.0.0.0"
-  }
+  }]
 
   autostart = true
 }
