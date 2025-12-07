@@ -22,7 +22,7 @@ ssh_keys = [
 #  SERVIDOR INFRA (DNS + NTP)
 # ================================
 infra = {
-  cpus     = 1
+  cpus     = 2
   memory   = 3072
   ip       = "10.56.0.10"
   hostname = "infra.okd.local"

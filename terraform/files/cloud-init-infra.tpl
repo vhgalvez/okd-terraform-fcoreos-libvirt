@@ -47,13 +47,13 @@ write_files:
       method=manual
       address1=${ip}/24,${gateway}
       dns=${dns1};${dns2}
-      dns-search=okd.okd.local
+      # Dominio de búsqueda: cluster FQDN + baseDomain
+      dns-search=okd.okd.local;okd.local
       may-fail=false
       route-metric=10
 
       [ipv6]
       method=ignore
-
 
   #────────────────────────────────────────────────────────
   # /etc/hosts dinámico
@@ -67,7 +67,6 @@ write_files:
       echo "::1         localhost" >> /etc/hosts
       echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
-
   #────────────────────────────────────────────────────────
   # sysctl — requerido para DNS + API
   #────────────────────────────────────────────────────────
@@ -76,7 +75,6 @@ write_files:
     content: |
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
-
 
   #────────────────────────────────────────────────────────
   # NetworkManager — no tocar resolv.conf
@@ -87,20 +85,20 @@ write_files:
       [main]
       dns=none
 
-
   #────────────────────────────────────────────────────────
   # CoreDNS — Corefile
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
+      # Zona interna del clúster: okd.okd.local
       okd.okd.local {
         file /etc/coredns/db.okd
       }
+      # El resto de dominios → DNS público
       . {
         forward . 8.8.8.8 1.1.1.1
       }
-
 
   #────────────────────────────────────────────────────────
   # CoreDNS — Zona DNS interna OKD
@@ -110,23 +108,27 @@ write_files:
     content: |
       $ORIGIN okd.okd.local.
       @   IN  SOA dns.okd.okd.local. admin.okd.okd.local. (
-              2025010101
-              7200
-              3600
-              1209600
-              3600 )
+              2025010101 ; serial
+              7200       ; refresh
+              3600       ; retry
+              1209600    ; expire
+              3600 )     ; minimum
       @       IN NS dns.okd.okd.local.
-      dns     IN A ${ip}
 
-      api         IN A 10.56.0.11
-      api-int     IN A 10.56.0.11
+      ; Servidor DNS interno (CoreDNS en infra)
+      dns         IN A ${ip}
 
+      ; API externa & interna SIEMPRE vía HAProxy en infra
+      api         IN A ${ip}
+      api-int     IN A ${ip}
+
+      ; Nodos del clúster (IPs reales)
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
       worker      IN A 10.56.0.13
 
-      *.apps      IN A 10.56.0.13
-
+      ; Todas las apps también entran por HAProxy (80/443)
+      *.apps      IN A ${ip}
 
   #────────────────────────────────────────────────────────
   # CoreDNS — systemd service
@@ -147,25 +149,27 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-
   #────────────────────────────────────────────────────────
-  # HAProxy — configuración correcta
+  # HAProxy — load balancer para API, MCS y apps
   #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
     content: |
       global
         log /dev/log local0
+        log /dev/log local1 notice
         maxconn 20000
         daemon
 
       defaults
         mode tcp
         log global
+        option tcplog
         timeout connect 5s
-        timeout client 30s
-        timeout server 30s
+        timeout client  30s
+        timeout server  30s
 
+      # API Kubernetes / OpenShift
       frontend api
         bind 0.0.0.0:6443
         default_backend api_nodes
@@ -173,9 +177,14 @@ write_files:
       backend api_nodes
         balance roundrobin
         option tcp-check
+        # Durante bootstrap:
+        #  - bootstrap sirve el API temporal
+        # Después:
+        #  - master sirve el API definitivo
         server bootstrap 10.56.0.11:6443 check fall 3 rise 2
         server master    10.56.0.12:6443 check fall 3 rise 2
 
+      # Machine Config Server (Ignition)
       frontend mcs
         bind 0.0.0.0:22623
         default_backend mcs_nodes
@@ -184,10 +193,12 @@ write_files:
         balance roundrobin
         server bootstrap 10.56.0.11:22623 check fall 3 rise 2
 
+      # Ingress HTTP
       frontend ingress80
         bind 0.0.0.0:80
         default_backend worker_ingress
 
+      # Ingress HTTPS
       frontend ingress443
         bind 0.0.0.0:443
         default_backend worker_ingress
@@ -196,7 +207,6 @@ write_files:
         balance roundrobin
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
-
 
   #────────────────────────────────────────────────────────
   # Chrony — NTP
@@ -239,9 +249,9 @@ runcmd:
   # sysctl
   - sysctl --system
 
-  # resolv.conf estático
+  # resolv.conf estático → usar SIEMPRE CoreDNS local
   - rm -f /etc/resolv.conf
-  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch okd.okd.local\n" > /etc/resolv.conf
+  - printf "nameserver 127.0.0.1\nsearch okd.okd.local okd.local\n" > /etc/resolv.conf
 
   # CoreDNS
   - mkdir -p /etc/coredns

@@ -456,3 +456,14 @@ okd-terraform-fcoreos-libvirt/
 EN BOOTSTRAP:
 
 journalctl -b -f -u bootkube.service
+
+
+
+# En rocky linux agregar entradas en /etc/hosts
+sudo bash -c 'cat >> /etc/hosts <<EOF
+10.56.0.10 api.okd.okd.local api-int.okd.okd.local
+10.56.0.10 console-openshift-console.apps.okd.okd.local
+EOF'
+
+
+
