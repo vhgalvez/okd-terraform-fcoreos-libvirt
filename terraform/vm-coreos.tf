@@ -1,26 +1,16 @@
 # terraform/vm-coreos.tf
 ###############################################
-# DISK IMAGES FOR FEDORA COREOS (ONE PER NODE)
+# FEDORA COREOS DISKS
 ###############################################
-
-# Cada nodo tendrá su propio disco QCOW2 creado
-# directamente a partir de la imagen oficial de Fedora CoreOS.
-# Esto evita problemas con backing_store y garantiza que el
-# disco sea bootable.
 
 resource "libvirt_volume" "bootstrap_disk" {
   name = "bootstrap.qcow2"
   pool = libvirt_pool.okd.name
 
-  # Crea el volumen copiando la imagen base de CoreOS
   create = {
     content = {
       url = var.coreos_image
     }
-  }
-
-  target = {
-    format = { type = "qcow2" }
   }
 }
 
@@ -33,10 +23,6 @@ resource "libvirt_volume" "master_disk" {
       url = var.coreos_image
     }
   }
-
-  target = {
-    format = { type = "qcow2" }
-  }
 }
 
 resource "libvirt_volume" "worker_disk" {
@@ -48,41 +34,20 @@ resource "libvirt_volume" "worker_disk" {
       url = var.coreos_image
     }
   }
-
-  target = {
-    format = { type = "qcow2" }
-  }
 }
 
 ###############################################
-# IGNITION RAW VOLUMES
+# IGNITION DISKS
 ###############################################
-
-resource "libvirt_ignition" "bootstrap" {
-  name    = "bootstrap.ign"
-  content = file("${path.module}/../generated/ignition/bootstrap.ign")
-}
-
-resource "libvirt_ignition" "master" {
-  name    = "master.ign"
-  content = file("${path.module}/../generated/ignition/master.ign")
-}
-
-resource "libvirt_ignition" "worker" {
-  name    = "worker.ign"
-  content = file("${path.module}/../generated/ignition/worker.ign")
-}
 
 resource "libvirt_volume" "bootstrap_ignition" {
   name = "bootstrap-ignition.raw"
   pool = libvirt_pool.okd.name
 
   create = {
-    content = { url = libvirt_ignition.bootstrap.path }
-  }
-
-  target = {
-    format = { type = "raw" }
+    content = {
+      url = libvirt_ignition.bootstrap.path
+    }
   }
 }
 
@@ -91,11 +56,9 @@ resource "libvirt_volume" "master_ignition" {
   pool = libvirt_pool.okd.name
 
   create = {
-    content = { url = libvirt_ignition.master.path }
-  }
-
-  target = {
-    format = { type = "raw" }
+    content = {
+      url = libvirt_ignition.master.path
+    }
   }
 }
 
@@ -104,28 +67,9 @@ resource "libvirt_volume" "worker_ignition" {
   pool = libvirt_pool.okd.name
 
   create = {
-    content = { url = libvirt_ignition.worker.path }
-  }
-
-  target = {
-    format = { type = "raw" }
-  }
-}
-
-###############################################
-# LOCAL DEFINITIONS
-###############################################
-
-locals {
-  domain_os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = [{ dev = "hd" }]
-  }
-
-  cpu_conf = {
-    mode = "host-passthrough"
+    content = {
+      url = libvirt_ignition.worker.path
+    }
   }
 }
 
@@ -134,62 +78,25 @@ locals {
 ###############################################
 
 resource "libvirt_domain" "bootstrap" {
-  name      = "okd-bootstrap"
-  type      = "kvm"
-  vcpu      = var.bootstrap.cpus
-  memory    = var.bootstrap.memory
-  autostart = true
+  name   = "okd-bootstrap"
+  memory = var.bootstrap.memory
+  vcpu   = var.bootstrap.cpus
 
-  os  = local.domain_os
-  cpu = local.cpu_conf
+  disk {
+    volume_id = libvirt_volume.bootstrap_disk.id
+  }
 
-  devices = {
-    disks = [
-      {
-        # Disco principal de Fedora CoreOS (bootable)
-        source = {
-          volume = {
-            pool   = libvirt_volume.bootstrap_disk.pool
-            volume = libvirt_volume.bootstrap_disk.name
-          }
-        }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
-      },
-      {
-        # Segundo disco: Ignition
-        source = {
-          volume = {
-            pool   = libvirt_volume.bootstrap_ignition.pool
-            volume = libvirt_volume.bootstrap_ignition.name
-          }
-        }
-        target = {
-          dev = "vdb"
-          bus = "virtio"
-        }
-      }
-    ]
+  disk {
+    volume_id = libvirt_volume.bootstrap_ignition.id
+  }
 
-    interfaces = [
-      {
-        model = { type = "virtio" }
-        source = {
-          network = { network = libvirt_network.okd_net.name }
-        }
-        mac = { address = var.bootstrap.mac }
-      }
-    ]
+  network_interface {
+    network_id = libvirt_network.okd_net.id
+    mac        = var.bootstrap.mac
+  }
 
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
+  console {
+    type = "pty"
   }
 }
 
@@ -198,60 +105,25 @@ resource "libvirt_domain" "bootstrap" {
 ###############################################
 
 resource "libvirt_domain" "master" {
-  name      = "okd-master"
-  type      = "kvm"
-  vcpu      = var.master.cpus
-  memory    = var.master.memory
-  autostart = true
+  name   = "okd-master"
+  memory = var.master.memory
+  vcpu   = var.master.cpus
 
-  os  = local.domain_os
-  cpu = local.cpu_conf
+  disk {
+    volume_id = libvirt_volume.master_disk.id
+  }
 
-  devices = {
-    disks = [
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.master_disk.pool
-            volume = libvirt_volume.master_disk.name
-          }
-        }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
-      },
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.master_ignition.pool
-            volume = libvirt_volume.master_ignition.name
-          }
-        }
-        target = {
-          dev = "vdb"
-          bus = "virtio"
-        }
-      }
-    ]
+  disk {
+    volume_id = libvirt_volume.master_ignition.id
+  }
 
-    interfaces = [
-      {
-        model = { type = "virtio" }
-        source = {
-          network = { network = libvirt_network.okd_net.name }
-        }
-        mac = { address = var.master.mac }
-      }
-    ]
+  network_interface {
+    network_id = libvirt_network.okd_net.id
+    mac        = var.master.mac
+  }
 
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
+  console {
+    type = "pty"
   }
 }
 
@@ -260,59 +132,24 @@ resource "libvirt_domain" "master" {
 ###############################################
 
 resource "libvirt_domain" "worker" {
-  name      = "okd-worker"
-  type      = "kvm"
-  vcpu      = var.worker.cpus
-  memory    = var.worker.memory
-  autostart = true
+  name   = "okd-worker"
+  memory = var.worker.memory
+  vcpu   = var.worker.cpus
 
-  os  = local.domain_os
-  cpu = local.cpu_conf
+  disk {
+    volume_id = libvirt_volume.worker_disk.id
+  }
 
-  devices = {
-    disks = [
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.worker_disk.pool
-            volume = libvirt_volume.worker_disk.name
-          }
-        }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
-      },
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.worker_ignition.pool
-            volume = libvirt_volume.worker_ignition.name
-          }
-        }
-        target = {
-          dev = "vdb"
-          bus = "virtio"
-        }
-      }
-    ]
+  disk {
+    volume_id = libvirt_volume.worker_ignition.id
+  }
 
-    interfaces = [
-      {
-        model = { type = "virtio" }
-        source = {
-          network = { network = libvirt_network.okd_net.name }
-        }
-        mac = { address = var.worker.mac }
-      }
-    ]
+  network_interface {
+    network_id = libvirt_network.okd_net.id
+    mac        = var.worker.mac
+  }
 
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
+  console {
+    type = "pty"
   }
 }
