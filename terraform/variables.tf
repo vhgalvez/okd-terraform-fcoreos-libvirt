@@ -125,3 +125,8 @@ variable "infra_ip" {
   description = "IP del servidor infra (DNS + NTP)"
   type        = string
 }
+
+variable "mac" {
+  description = "Dirección MAC para la interfaz de red"
+  type        = string
+}

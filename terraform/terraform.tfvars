@@ -1,4 +1,4 @@
-# terraform\terraform.tfvars
+# terraform/terraform.tfvars
 # ================================
 #  RED
 # ================================
@@ -26,9 +26,9 @@ infra = {
   memory   = 3072
   ip       = "10.56.0.10"
   hostname = "infra.okd.local"
+  mac      = "52:54:00:00:00:10"
 }
 
-# Necesario para network.tf
 infra_ip = "10.56.0.10"
 
 # ================================
@@ -68,12 +68,7 @@ dns1    = "8.8.8.8"
 dns2    = "10.56.0.10"
 gateway = "10.56.0.1"
 
-# cluster_domain -> zona DNS principal
 cluster_domain = "okd.local"
+cluster_name   = "okd"
 
-# cluster_name -> prefijo
-cluster_name = "okd"
-
-# FQDN completo se deriva automáticamente:
-# okd.okd.local
 timezone = "UTC"

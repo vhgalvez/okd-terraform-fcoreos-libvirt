@@ -36,7 +36,6 @@ resource "libvirt_domain" "bootstrap" {
   name      = "okd-bootstrap"
   memory    = var.bootstrap.memory
   vcpu      = var.bootstrap.cpus
-  addresses = var.bootstrap.ip
   autostart = true
 
   cpu {
@@ -46,17 +45,14 @@ resource "libvirt_domain" "bootstrap" {
   network_interface {
     network_id = libvirt_network.okd_net.id
     mac        = var.bootstrap.mac
-    # No uses "addresses": Ignition configura la IP real.
   }
 
   disk {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-  # Ignition de OpenShift
   coreos_ignition = libvirt_ignition.bootstrap.id
 
-  # VNC obligatorio (SPICE no soportado en tu QEMU)
   graphics {
     type           = "vnc"
     autoport       = true
@@ -83,7 +79,6 @@ resource "libvirt_domain" "master" {
   name      = "okd-master"
   memory    = var.master.memory
   vcpu      = var.master.cpus
-  addresses = var.master.ip
   autostart = true
 
   cpu {
@@ -127,7 +122,6 @@ resource "libvirt_domain" "worker" {
   name      = "okd-worker"
   memory    = var.worker.memory
   vcpu      = var.worker.cpus
-  addresses = var.worker.ip
   autostart = true
 
   cpu {
