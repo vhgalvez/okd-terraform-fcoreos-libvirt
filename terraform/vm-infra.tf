@@ -52,12 +52,6 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  
-# time sycronization
-clock {
-  offset = "utc"
-}
-
   cpu {
     mode = "host-passthrough"
   }
