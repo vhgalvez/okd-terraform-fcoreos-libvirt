@@ -13,5 +13,6 @@ resource "libvirt_network" "okd_net" {
 
   dns {
     enabled = true
+    forwarders = [var.dns1, var.dns2]
   }
 }
