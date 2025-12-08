@@ -1,4 +1,4 @@
-# terraform\vm-infra.tf
+# terraform/vm-infra.tf
 ###############################################
 # DISCO DEL NODO INFRA (AlmaLinux)
 ###############################################
@@ -6,15 +6,17 @@ resource "libvirt_volume" "infra_disk" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
-  # Importa la imagen local de AlmaLinux (Convertido a Mapa HCL)
+  # Importa la imagen local de AlmaLinux (qcow2)
   create = {
     content = {
       url = var.almalinux_image
     }
   }
 
-  target = { # Convertido a Mapa HCL
-    format = "qcow2"
+  target = {
+    format = {
+      type = "qcow2"
+    }
   }
 }
 
@@ -44,7 +46,7 @@ data "template_file" "infra_cloud_init" {
 }
 
 ###############################################
-# CLOUD-INIT DISK
+# CLOUD-INIT DISK (sin pool para 0.9.1)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
@@ -54,6 +56,24 @@ resource "libvirt_cloudinit_disk" "infra_init" {
     "instance-id"    = "okd-infra"
     "local-hostname" = var.infra.hostname
   })
+}
+
+# Volumen RAW que contiene el ISO de cloud-init
+resource "libvirt_volume" "infra_cloudinit" {
+  name = "infra-cloudinit.iso"
+  pool = libvirt_pool.okd.name
+
+  create = {
+    content = {
+      url = libvirt_cloudinit_disk.infra_init.path
+    }
+  }
+
+  target = {
+    format = {
+      type = "raw"
+    }
+  }
 }
 
 ###############################################
@@ -66,28 +86,21 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  cpu = { # Convertido a Mapa HCL
+  cpu = {
     mode = "host-passthrough"
   }
 
-  os = { # Convertido a Mapa HCL
+  os = {
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
     boot_devices = [{ dev = "hd" }]
   }
 
-  # CONFIGURACIÓN DE GRÁFICOS (VNC) - Convertido a Mapa HCL
-  graphics = {
-    type     = "vnc"
-    autoport = true
-    listen   = "127.0.0.1"
-  }
-
-  devices = { # Convertido a Mapa HCL
+  devices = {
     disks = [
       {
-        # 1. Disco principal de AlmaLinux (vda)
+        # Disco principal AlmaLinux (vda)
         source = {
           volume = {
             pool   = libvirt_volume.infra_disk.pool
@@ -100,8 +113,13 @@ resource "libvirt_domain" "infra" {
         }
       },
       {
-        # 2. Disco Cloud-Init (vdb) - Sintaxis de conexión v0.9.1
-        cloudinit = libvirt_cloudinit_disk.infra_init.id
+        # Segundo disco: cloud-init (vdb)
+        source = {
+          volume = {
+            pool   = libvirt_volume.infra_cloudinit.pool
+            volume = libvirt_volume.infra_cloudinit.name
+          }
+        }
         target = {
           dev = "vdb"
           bus = "virtio"
@@ -125,15 +143,6 @@ resource "libvirt_domain" "infra" {
         target_type = "serial"
         target_port = "0"
       }
-    ]
-
-    # TARJETA DE VIDEO (videos como lista de mapas, forzado por devices={...})
-    videos = [
-        {
-            model = {
-                type = "qxl"
-            }
-        }
     ]
   }
 }
