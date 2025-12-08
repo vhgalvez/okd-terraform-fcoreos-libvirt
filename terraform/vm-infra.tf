@@ -19,17 +19,17 @@ data "template_file" "infra_cloud_init" {
     hostname       = var.infra.hostname
     short_hostname = split(".", var.infra.hostname)[0]
 
-    ip             = var.infra.ip
-    gateway        = var.gateway
-    dns1           = var.dns1
-    dns2           = var.dns2
+    ip      = var.infra.ip
+    gateway = var.gateway
+    dns1    = var.dns1
+    dns2    = var.dns2
 
     cluster_domain = var.cluster_domain
     cluster_name   = var.cluster_name
     cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
 
-    ssh_keys       = join("\n", var.ssh_keys)
-    timezone       = var.timezone
+    ssh_keys = join("\n", var.ssh_keys)
+    timezone = var.timezone
   }
 }
 
@@ -37,7 +37,7 @@ data "template_file" "infra_cloud_init" {
 # CLOUD-INIT DISK (libvirt_cloudinit_disk)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
-  name      = "infra-cloudinit"
+  name      = "infra-cloudinit.iso"
   user_data = data.template_file.infra_cloud_init.rendered
 
   meta_data = yamlencode({
@@ -55,6 +55,11 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
+  # 🔧 MUY IMPORTANTE: evitar qemu64 y usar CPU del host
+  cpu {
+    mode = "host-model"
+  }
+
   ###########################################
   # DISCO PRINCIPAL
   ###########################################
@@ -71,9 +76,12 @@ resource "libvirt_domain" "infra" {
   # NETWORK INTERFACE
   ###########################################
   network_interface {
-    network_name   = libvirt_network.okd_net.name
-    mac            = var.infra.mac
-    wait_for_lease = true
+    network_name = libvirt_network.okd_net.name
+    mac          = var.infra.mac
+
+    # Usas IP estática via cloud-init, así que
+    # mejor no esperes lease DHCP:
+    wait_for_lease = false
   }
 
   ###########################################
@@ -82,7 +90,7 @@ resource "libvirt_domain" "infra" {
   console {
     type        = "pty"
     target_type = "serial"
-    target_port = 0
+    target_port = "0"
   }
 
   ###########################################
