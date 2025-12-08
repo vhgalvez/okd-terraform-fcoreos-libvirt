@@ -1,59 +1,60 @@
 # terraform/vm-coreos.tf
 ###############################################
-# FEDORA COREOS BASE + DISKS
+# FEDORA COREOS DISKS
 ###############################################
 
-# Volumen base de Fedora CoreOS (desde imagen local qcow2)
-resource "libvirt_volume" "coreos_base" {
-  name   = "fcos-base.qcow2"
-  pool   = libvirt_pool.okd.name
-  source = var.coreos_image # EJ: "/var/lib/libvirt/images/fedora-coreos-....qcow2"
-  format = "qcow2"
-}
-
-# Overlays para cada nodo (copy-on-write sobre coreos_base)
+# Disco del nodo BOOTSTRAP
 resource "libvirt_volume" "bootstrap_disk" {
-  name     = "bootstrap.qcow2"
-  pool     = libvirt_pool.okd.name
-  capacity = 107374182400 # 100GiB
+  name = "bootstrap.qcow2"
+  pool = libvirt_pool.okd.name
 
-  backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
+  # Importa la imagen local de Fedora CoreOS
+  create = {
+    content = {
+      url = var.coreos_image
+    }
   }
 
   target = {
-    format = { type = "qcow2" }
+    format = {
+      type = "qcow2"
+    }
   }
 }
 
+# Disco del nodo MASTER
 resource "libvirt_volume" "master_disk" {
-  name     = "master.qcow2"
-  pool     = libvirt_pool.okd.name
-  capacity = 107374182400
+  name = "master.qcow2"
+  pool = libvirt_pool.okd.name
 
-  backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
+  create = {
+    content = {
+      url = var.coreos_image
+    }
   }
 
   target = {
-    format = { type = "qcow2" }
+    format = {
+      type = "qcow2"
+    }
   }
 }
 
+# Disco del nodo WORKER
 resource "libvirt_volume" "worker_disk" {
-  name     = "worker.qcow2"
-  pool     = libvirt_pool.okd.name
-  capacity = 107374182400
+  name = "worker.qcow2"
+  pool = libvirt_pool.okd.name
 
-  backing_store = {
-    path   = libvirt_volume.coreos_base.path
-    format = { type = "qcow2" }
+  create = {
+    content = {
+      url = var.coreos_image
+    }
   }
 
   target = {
-    format = { type = "qcow2" }
+    format = {
+      type = "qcow2"
+    }
   }
 }
 
@@ -61,7 +62,7 @@ resource "libvirt_volume" "worker_disk" {
 # IGNITION RAW VOLUMES
 ###############################################
 
-# Convierte los .ign en bloques raw legibles para libvirt
+# Recurso ignition -> convierte el .ign en un bloque entendible por libvirt
 resource "libvirt_ignition" "bootstrap" {
   name    = "bootstrap.ign"
   content = file("${path.module}/../generated/ignition/bootstrap.ign")
@@ -77,17 +78,21 @@ resource "libvirt_ignition" "worker" {
   content = file("${path.module}/../generated/ignition/worker.ign")
 }
 
+# Volúmenes RAW que contienen la ignition (vía URL al recurso ignition)
 resource "libvirt_volume" "bootstrap_ignition" {
   name = "bootstrap-ignition.raw"
   pool = libvirt_pool.okd.name
 
-  # Aquí sí podemos seguir usando create+url porque es un fichero local pequeño
   create = {
-    content = { url = libvirt_ignition.bootstrap.path }
+    content = {
+      url = libvirt_ignition.bootstrap.path
+    }
   }
 
   target = {
-    format = { type = "raw" }
+    format = {
+      type = "raw"
+    }
   }
 }
 
@@ -96,11 +101,15 @@ resource "libvirt_volume" "master_ignition" {
   pool = libvirt_pool.okd.name
 
   create = {
-    content = { url = libvirt_ignition.master.path }
+    content = {
+      url = libvirt_ignition.master.path
+    }
   }
 
   target = {
-    format = { type = "raw" }
+    format = {
+      type = "raw"
+    }
   }
 }
 
@@ -109,11 +118,15 @@ resource "libvirt_volume" "worker_ignition" {
   pool = libvirt_pool.okd.name
 
   create = {
-    content = { url = libvirt_ignition.worker.path }
+    content = {
+      url = libvirt_ignition.worker.path
+    }
   }
 
   target = {
-    format = { type = "raw" }
+    format = {
+      type = "raw"
+    }
   }
 }
 
@@ -149,7 +162,7 @@ resource "libvirt_domain" "bootstrap" {
   devices = {
     disks = [
       {
-        # Disco principal (Fedora CoreOS overlay)
+        # Disco principal CoreOS
         source = {
           volume = {
             pool   = libvirt_volume.bootstrap_disk.pool
@@ -162,7 +175,7 @@ resource "libvirt_domain" "bootstrap" {
         }
       },
       {
-        # Disco con Ignition
+        # Disco de Ignition
         source = {
           volume = {
             pool   = libvirt_volume.bootstrap_ignition.pool
