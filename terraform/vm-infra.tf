@@ -62,7 +62,6 @@ clock {
     mode = "host-passthrough"
   }
 
-  os_type = "hvm"
   arch    = "x86_64"
   machine = "pc"
 
