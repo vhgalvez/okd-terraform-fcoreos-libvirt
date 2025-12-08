@@ -466,5 +466,5 @@ sudo bash -c 'cat >> /etc/hosts <<EOF
 EOF'
 
 
-
+sudo virsh net-list --all
 sudo virsh net-dhcp-leases okd-net
