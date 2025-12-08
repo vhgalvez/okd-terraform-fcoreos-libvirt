@@ -44,6 +44,7 @@ variable "bootstrap" {
   type = object({
     cpus   = number
     memory = number
+    hostname = string
     ip     = string
     mac    = string
   })
@@ -58,6 +59,7 @@ variable "master" {
     cpus   = number
     memory = number
     ip     = string
+    hostname = string
     mac    = string
   })
 }
@@ -71,6 +73,7 @@ variable "worker" {
     cpus   = number
     memory = number
     ip     = string
+    hostname = string
     mac    = string
   })
 }
