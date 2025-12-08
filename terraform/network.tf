@@ -1,19 +1,17 @@
 # terraform\network.tf
-###########################################################
-# RED OKD SIN DHCP (modo route = IPs fijas 100% funcionales)
-###########################################################
-
 resource "libvirt_network" "okd_net" {
   name      = var.network_name
-  mode      = "route"   # ← SOLUCIÓN DEFINITIVA PARA IP FIJA
+  mode      = "nat"
+  bridge    = "virbr_okd"
   domain    = "${var.cluster_name}.${var.cluster_domain}"
-
-  # Rango de red
+  autostart = true
   addresses = [var.network_cidr]
 
-  autostart = true
+  dhcp {
+    enabled = true
+  }
 
-  # DNS interno (opcional)
+  # The dns block should be inside the resource block
   dns {
     enabled = true
   }
