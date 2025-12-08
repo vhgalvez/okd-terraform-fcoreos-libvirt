@@ -50,21 +50,21 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  time_zone = "UTC"
-
   cpu {
     mode = "host-passthrough"
   }
 
+  # 
   arch    = "x86_64"
   machine = "pc"
+
 
   # Disco raíz AlmaLinux
   disk {
     volume_id = libvirt_volume.infra_disk.id
   }
 
-  # cloud-init
+  # Cloud-init
   cloudinit = libvirt_cloudinit_disk.infra_init.id
 
   # Interfaz de red
@@ -83,7 +83,7 @@ resource "libvirt_domain" "infra" {
     target_port = 0
   }
 
-  # Gráficos
+  # VNC + VGA para ver arranque
   graphics {
     type           = "vnc"
     listen_type    = "address"
@@ -94,10 +94,4 @@ resource "libvirt_domain" "infra" {
   video {
     type = "vga"
   }
-
-  # 🔥 IMPORTANTÍSIMO: RELOJ RTC CORRECTO PARA OKD
-  qemu_commandline = [
-    "-rtc",
-    "base=utc"
-  ]
 }
