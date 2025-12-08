@@ -1,5 +1,4 @@
 # terraform/outputs.tf
-
 #############################################
 # MAPA COMPLETO DE IPs
 #############################################
@@ -50,9 +49,9 @@ output "network_cidr" {
 }
 
 #############################################
-# POOL — Ruta real usada por libvirt (0.9.1)
+# POOL — Ruta real usada por libvirt (0.8.3)
 #############################################
 output "libvirt_pool_path" {
   description = "Ruta del pool de libvirt donde se guardan los discos"
-  value       = libvirt_pool.okd.target.path
+  value       = libvirt_pool.okd.path
 }

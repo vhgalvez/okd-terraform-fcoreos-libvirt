@@ -35,7 +35,7 @@ data "template_file" "infra_cloud_init" {
 }
 
 ###############################################
-# CLOUD-INIT DISK (ISO RAW INTERNO)
+# CLOUD-INIT DISK (libvirt_cloudinit_disk)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
@@ -48,86 +48,33 @@ resource "libvirt_cloudinit_disk" "infra_init" {
 }
 
 ###############################################
-# RAW DISK A PARTIR DEL CLOUD-INIT
-###############################################
-resource "libvirt_volume" "infra_cloudinit" {
-  name   = "infra-cloudinit.raw"
-  pool   = libvirt_pool.okd.name
-  source = libvirt_cloudinit_disk.infra_init.path
-  format = "raw"
-}
-
-###############################################
 # VM INFRA (DNS + NTP + HAProxy + CoreDNS)
 ###############################################
 resource "libvirt_domain" "infra" {
   name      = "okd-infra"
-  type      = "kvm"
   vcpu      = var.infra.cpus
   memory    = var.infra.memory
   autostart = true
 
-  # Reutilizamos los locals definidos en vm-coreos.tf
-  os  = local.domain_os
-  cpu = local.cpu_conf
-
-  devices = {
-    ###########################################
-    # DISKS
-    ###########################################
-    disks = [
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.infra_disk.pool
-            volume = libvirt_volume.infra_disk.name
-          }
-        }
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
-      },
-      {
-        source = {
-          volume = {
-            pool   = libvirt_volume.infra_cloudinit.pool
-            volume = libvirt_volume.infra_cloudinit.name
-          }
-        }
-        target = {
-          dev = "vdb"
-          bus = "virtio"
-        }
-      }
-    ]
-
-    ###########################################
-    # NETWORK INTERFACE
-    ###########################################
-    interfaces = [
-      {
-        model = { type = "virtio" }
-        source = {
-          network = {
-            network = libvirt_network.okd_net.name
-          }
-        }
-        mac = { address = var.infra.mac }
-      }
-    ]
-
-    ###########################################
-    # CONSOLE (SERIAL)
-    ###########################################
-    consoles = [
-      {
-        type        = "pty"
-        target_type = "serial"
-        target_port = "0"
-      }
-    ]
+  # Disco raíz AlmaLinux
+  disk {
+    volume_id = libvirt_volume.infra_disk.id
   }
 
-  running = true
+  # Cloud-init attach (0.8.3)
+  cloudinit = libvirt_cloudinit_disk.infra_init.id
+
+  # Interfaz de red
+  network_interface {
+    network_name   = libvirt_network.okd_net.name
+    mac            = var.infra.mac
+    wait_for_lease = true
+  }
+
+  # Consola serie
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
+  }
 }

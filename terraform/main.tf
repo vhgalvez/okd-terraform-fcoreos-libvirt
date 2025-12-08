@@ -1,6 +1,4 @@
-
 # terraform/main.tf
-
 ########################################################################
 # TERRAFORM BACKEND + PROVIDERS
 ########################################################################
@@ -20,8 +18,6 @@ terraform {
   }
 }
 
-}
-
 ########################################################################
 # PROVIDER LIBVIRT
 ########################################################################
@@ -31,15 +27,12 @@ provider "libvirt" {
 }
 
 ########################################################################
-# STORAGE POOL (SINTAXIS 0.9.1 SEGÚN SCHEMA)
-# - target es un ATRIBUTO (no bloque)
+# STORAGE POOL (SINTAXIS 0.8.3)
+# - path es atributo directo
 ########################################################################
 
 resource "libvirt_pool" "okd" {
   name = "okd"
   type = "dir"
-
-  target = {
-    path = "/var/lib/libvirt/images/okd"
-  }
+  path = "/var/lib/libvirt/images/okd"
 }

@@ -1,65 +1,23 @@
+
 # terraform/network.tf
 
 ###############################################
-# RED OKD (libvirt_network)
+# RED OKD (libvirt_network - 0.8.3)
 ###############################################
 resource "libvirt_network" "okd_net" {
   name      = var.network_name
+  mode      = "nat"
+  domain    = "${var.cluster_name}.${var.cluster_domain}"
+  addresses = [var.network_cidr]
   autostart = true
 
-  bridge = {
-    name = "virbr_okd"
+  # DHCP básico activado (sin reservas por MAC en esta versión)
+  dhcp {
+    enabled = true
   }
 
-  domain = {
-    name = "${var.cluster_name}.${var.cluster_domain}"
-  }
-
-  ips = [
-    {
-      family  = "ipv4"
-      address = cidrhost(var.network_cidr, 1) # 10.56.0.1
-      netmask = cidrnetmask(var.network_cidr)
-
-      dhcp = {
-        hosts = [
-          {
-            name = "bootstrap"
-            mac  = var.bootstrap.mac
-            ip   = var.bootstrap.ip
-          },
-          {
-            name = "master"
-            mac  = var.master.mac
-            ip   = var.master.ip
-          },
-          {
-            name = "worker"
-            mac  = var.worker.mac
-            ip   = var.worker.ip
-          },
-          {
-            name = "infra"
-            mac  = var.infra.mac
-            ip   = var.infra.ip
-          }
-        ]
-      }
-    }
-  ]
-
-  dns = {
-    host = [
-      {
-        ip = var.infra.ip
-        hostnames = [
-          { hostname = "infra" }
-        ]
-      }
-    ]
-
-    forwarders = [
-      { addr = var.infra_ip }
-    ]
+  # DNS activado dentro de la red libvirt
+  dns {
+    enabled = true
   }
 }
