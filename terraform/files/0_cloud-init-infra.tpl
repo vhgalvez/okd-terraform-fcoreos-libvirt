@@ -1,6 +1,7 @@
 #cloud-config
 hostname: ${hostname}
 manage_etc_hosts: false
+timezone: ${timezone}
 
 ssh_pwauth: true
 disable_root: false
@@ -9,21 +10,8 @@ users:
   - default
 
   - name: root
-    ssh_authorized_keys: ${ssh_keys}
-
-  - name: core
-    gecos: "Core User"
-    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
-    groups: [wheel]
-    shell: /bin/bash
-    lock_passwd: false
-    ssh_authorized_keys: ${ssh_keys}
-
-growpart:
-  mode: auto
-  devices: ["/"]
-
-resize_rootfs: true
+    ssh_authorized_keys: |
+${ssh_keys}
 
 ###########################################################
 # WRITE_FILES
@@ -49,7 +37,6 @@ write_files:
       dns=${dns1};${dns2}
       dns-search=${cluster_name}.${cluster_domain}
       may-fail=false
-      route-metric=10
 
       [ipv6]
       method=ignore
@@ -63,11 +50,10 @@ write_files:
       #!/bin/bash
       SHORT=$(echo "${hostname}" | cut -d'.' -f1)
       echo "127.0.0.1   localhost" > /etc/hosts
-      echo "::1         localhost" >> /etc/hosts
       echo "${ip}  ${hostname} $SHORT" >> /etc/hosts
 
   #────────────────────────────────────────────────────────
-  # sysctl (OKD requiere esto)
+  # sysctl para OKD + HAProxy
   #────────────────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
@@ -76,7 +62,7 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
 
   #────────────────────────────────────────────────────────
-  # NetworkManager — impedir override de resolv.conf
+  # NetworkManager — no gestionar resolv.conf
   #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
@@ -85,7 +71,7 @@ write_files:
       dns=none
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — Corefile
+  # CoreDNS — Corefile correcto para okd.okd.local
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
@@ -98,7 +84,7 @@ write_files:
       }
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — Base de zona DNS OKD
+  # CoreDNS — zona DNS okd.okd.local correcta
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
@@ -113,8 +99,8 @@ write_files:
       @       IN NS dns.${cluster_name}.${cluster_domain}.
       dns         IN A ${ip}
 
-      api         IN A 10.56.0.11
-      api-int     IN A 10.56.0.11
+      api         IN A ${ip}
+      api-int     IN A ${ip}
 
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
@@ -129,7 +115,7 @@ write_files:
     permissions: "0644"
     content: |
       [Unit]
-      Description=CoreDNS DNS Server
+      Description=CoreDNS
       After=network-online.target
       Wants=network-online.target
 
@@ -142,23 +128,22 @@ write_files:
       WantedBy=multi-user.target
 
   #────────────────────────────────────────────────────────
-  # HAProxy correcto para OKD
+  # HAProxy — configurado para OKD
   #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
     content: |
       global
-        log /dev/log local0
         maxconn 20000
         daemon
 
       defaults
         mode tcp
-        log global
         timeout connect 5s
         timeout client 30s
         timeout server 30s
 
+      # API
       frontend api
         bind 0.0.0.0:6443
         default_backend api_nodes
@@ -169,6 +154,7 @@ write_files:
         server bootstrap 10.56.0.11:6443 check fall 3 rise 2
         server master    10.56.0.12:6443 check fall 3 rise 2
 
+      # MCS
       frontend mcs
         bind 0.0.0.0:22623
         default_backend mcs_nodes
@@ -177,6 +163,7 @@ write_files:
         balance roundrobin
         server bootstrap 10.56.0.11:22623 check fall 3 rise 2
 
+      # Apps
       frontend ingress80
         bind 0.0.0.0:80
         default_backend worker_ingress
@@ -187,7 +174,7 @@ write_files:
 
       backend worker_ingress
         balance roundrobin
-        server worker80  10.56.0.13:80  check
+        server worker80  10.56.0.13:80 check
         server worker443 10.56.0.13:443 check
 
 ###########################################################
@@ -208,7 +195,7 @@ runcmd:
 
   # Network reload
   - nmcli connection reload
-  - bash -c "nmcli connection down eth0 || true"
+  - nmcli connection down eth0 || true
   - nmcli connection up eth0
 
   # Paquetes necesarios
@@ -216,7 +203,7 @@ runcmd:
 
   - sysctl --system
 
-  # resolv.conf correcto
+  # resolv.conf final
   - rm -f /etc/resolv.conf
   - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
 
@@ -225,17 +212,20 @@ runcmd:
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - chmod +x /usr/local/bin/coredns
-  - rm -f /tmp/coredns.tgz
 
   # SELinux
   - setsebool -P haproxy_connect_any 1
-  - setsebool -P httpd_can_network_connect 1
-  - semanage port -a -t http_port_t -p tcp 6443 || true
-  - semanage port -a -t http_port_t -p tcp 22623 || true
 
-  # Services
+  # Enable services
   - systemctl daemon-reload
-  - systemctl enable NetworkManager firewalld chronyd coredns haproxy
-  - systemctl restart NetworkManager firewalld chronyd coredns haproxy
+  - systemctl enable firewalld chronyd coredns haproxy
+  - systemctl restart firewalld chronyd coredns haproxy
 
-timezone: ${timezone}
+  # Firewall
+  - firewall-cmd --permanent --add-port=53/tcp
+  - firewall-cmd --permanent --add-port=53/udp
+  - firewall-cmd --permanent --add-port=6443/tcp
+  - firewall-cmd --permanent --add-port=22623/tcp
+  - firewall-cmd --permanent --add-port=80/tcp
+  - firewall-cmd --permanent --add-port=443/tcp
+  - firewall-cmd --reload
