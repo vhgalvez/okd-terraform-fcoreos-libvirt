@@ -1,6 +1,6 @@
 # terraform/vm-coreos.tf
 ###############################################
-# FEDORA COREOS BASE IMAGE
+# FEDORA COREOS BASE
 ###############################################
 
 resource "libvirt_volume" "coreos_base" {
@@ -11,7 +11,7 @@ resource "libvirt_volume" "coreos_base" {
 }
 
 ###############################################
-# DIFFERENCING DISKS (BOOTSTRAP / MASTER / WORKER)
+# OVERLAYS
 ###############################################
 
 resource "libvirt_volume" "bootstrap_disk" {
@@ -58,54 +58,14 @@ resource "libvirt_ignition" "worker" {
 }
 
 ###############################################
-# NODE TEMPLATE (SHARED CONFIG)
-###############################################
-
-locals {
-  common = {
-    autostart = true
-
-    cpu = {
-      mode = "host-passthrough"
-    }
-
-    console = {
-      type        = "pty"
-      target_type = "serial"
-      target_port = 0
-    }
-
-    graphics = {
-      type           = "vnc"
-      listen_type    = "address"
-      listen_address = "127.0.0.1"
-      autoport       = true
-    }
-
-    video = {
-      type = "vga"
-    }
-  }
-}
-
-###############################################
 # BOOTSTRAP NODE
 ###############################################
 
 resource "libvirt_domain" "bootstrap" {
-  name   = "okd-bootstrap"
-  vcpu   = var.bootstrap.cpus
-  memory = var.bootstrap.memory
-
-  # Shared config
-  autostart = local.common.autostart
-  console   = local.common.console
-  graphics  = local.common.graphics
-  video     = local.common.video
-
-  cpu {
-    mode = local.common.cpu.mode
-  }
+  name      = "okd-bootstrap"
+  vcpu      = var.bootstrap.cpus
+  memory    = var.bootstrap.memory
+  autostart = true
 
   disk {
     volume_id = libvirt_volume.bootstrap_disk.id
@@ -114,6 +74,25 @@ resource "libvirt_domain" "bootstrap" {
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.bootstrap.mac
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = 0
+  }
+
+  # ✔ VNC (no spice)
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  # ✔ Video VGA
+  video {
+    type = "vga"
   }
 
   coreos_ignition = libvirt_ignition.bootstrap.id
@@ -125,18 +104,10 @@ resource "libvirt_domain" "bootstrap" {
 ###############################################
 
 resource "libvirt_domain" "master" {
-  name   = "okd-master"
-  vcpu   = var.master.cpus
-  memory = var.master.memory
-
-  autostart = local.common.autostart
-  console   = local.common.console
-  graphics  = local.common.graphics
-  video     = local.common.video
-
-  cpu {
-    mode = local.common.cpu.mode
-  }
+  name      = "okd-master"
+  vcpu      = var.master.cpus
+  memory    = var.master.memory
+  autostart = true
 
   disk {
     volume_id = libvirt_volume.master_disk.id
@@ -145,6 +116,23 @@ resource "libvirt_domain" "master" {
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.master.mac
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = 0
+  }
+
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  video {
+    type = "vga"
   }
 
   coreos_ignition = libvirt_ignition.master.id
@@ -156,18 +144,10 @@ resource "libvirt_domain" "master" {
 ###############################################
 
 resource "libvirt_domain" "worker" {
-  name   = "okd-worker"
-  vcpu   = var.worker.cpus
-  memory = var.worker.memory
-
-  autostart = local.common.autostart
-  console   = local.common.console
-  graphics  = local.common.graphics
-  video     = local.common.video
-
-  cpu {
-    mode = local.common.cpu.mode
-  }
+  name      = "okd-worker"
+  vcpu      = var.worker.cpus
+  memory    = var.worker.memory
+  autostart = true
 
   disk {
     volume_id = libvirt_volume.worker_disk.id
@@ -176,6 +156,23 @@ resource "libvirt_domain" "worker" {
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.worker.mac
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = 0
+  }
+
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  video {
+    type = "vga"
   }
 
   coreos_ignition = libvirt_ignition.worker.id
