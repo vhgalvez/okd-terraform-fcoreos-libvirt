@@ -1,4 +1,5 @@
 # terraform/network.tf
+# terraform/network.tf
 resource "libvirt_network" "okd_net" {
   name      = var.network_name
   mode      = "nat"
@@ -14,9 +15,14 @@ resource "libvirt_network" "okd_net" {
   dns {
     enabled = true
 
-    # 👉 Todo lo que reciban las VMs se reenvía a infra (CoreDNS)
+    # 👉 1) Forwarder principal (CoreDNS en INFRA)
     forwarders {
-      address = var.infra.ip   # 10.56.0.10
+      address = var.dns2   # normalmente 10.56.0.10
+    }
+
+    # 👉 2) Forwarder secundario (Google DNS como backup)
+    forwarders {
+      address = var.dns1   # 8.8.8.8
     }
   }
 }

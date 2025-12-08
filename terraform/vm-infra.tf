@@ -50,7 +50,6 @@ resource "libvirt_domain" "infra" {
   name      = "okd-infra"
   vcpu      = var.infra.cpus
   memory    = var.infra.memory
-  addresses = [var.infra.ip]
   autostart = true
 
   # 🔥 CPU REAL DEL HOST (evita el panic)
@@ -58,7 +57,7 @@ resource "libvirt_domain" "infra" {
     mode = "host-passthrough"
   }
 
-# Arquitectura y máquina
+# 
 arch    = "x86_64"
 machine = "pc"
 
@@ -74,8 +73,10 @@ machine = "pc"
   # Interfaz de red
   network_interface {
     network_name = libvirt_network.okd_net.name
+    hostname     = var.infra.hostname
     mac          = var.infra.mac
     addresses    = [var.infra.ip]
+    wait_for_lease = true
   }
 
   # Consola serie
