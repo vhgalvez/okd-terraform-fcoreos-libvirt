@@ -7,11 +7,9 @@ disable_root: false
 
 users:
   - default
-
   - name: root
     ssh_authorized_keys:
       ${ssh_keys}
-
   - name: core
     gecos: "Core User"
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
@@ -34,9 +32,16 @@ resize_rootfs: true
 
 write_files:
 
-  #────────────────────────────────────────────────────────
-  # NetworkManager: IP fija + DNS
-  #────────────────────────────────────────────────────────
+  #--------------------------------------------------------
+  # 🔥 NetworkManager — IP FIJA CORRECTA
+  #--------------------------------------------------------
+  - path: /etc/NetworkManager/conf.d/10-cloud-init.conf
+    permissions: "0644"
+    content: |
+      [main]
+      plugins=keyfile
+      no-auto-default=*
+
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
     content: |
@@ -52,44 +57,35 @@ write_files:
       dns=${dns1};${dns2}
       dns-search=${cluster_name}.${cluster_domain}
       may-fail=false
-      route-metric=10
 
       [ipv6]
       method=ignore
 
-  #────────────────────────────────────────────────────────
-  # /etc/hosts dinámico
-  #────────────────────────────────────────────────────────
-  - path: /usr/local/bin/set-hosts.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      SHORT=$(echo "${hostname}" | cut -d'.' -f1)
-      echo "127.0.0.1 localhost" > /etc/hosts
-      echo "::1       localhost" >> /etc/hosts
-      echo "${ip} ${hostname} $SHORT" >> /etc/hosts
 
-  #────────────────────────────────────────────────────────
-  # sysctl requerido para OKD
-  #────────────────────────────────────────────────────────
-  - path: /etc/sysctl.d/99-custom.conf
+  #--------------------------------------------------------
+  # /etc/hosts
+  #--------------------------------------------------------
+  - path: /etc/hosts
+    permissions: "0644"
+    content: |
+      127.0.0.1 localhost
+      ::1       localhost
+      ${ip} ${hostname} ${short_hostname}
+
+
+  #--------------------------------------------------------
+  # sysctl necesario para OKD
+  #--------------------------------------------------------
+  - path: /etc/sysctl.d/99-okd.conf
     permissions: "0644"
     content: |
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
 
-  #────────────────────────────────────────────────────────
-  # evitar override de resolv.conf
-  #────────────────────────────────────────────────────────
-  - path: /etc/NetworkManager/conf.d/dns.conf
-    permissions: "0644"
-    content: |
-      [main]
-      dns=none
 
-  #────────────────────────────────────────────────────────
-  # CoreDNS: zona principal
-  #────────────────────────────────────────────────────────
+  #--------------------------------------------------------
+  # CoreDNS (archivo y zona)
+  #--------------------------------------------------------
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
@@ -100,9 +96,6 @@ write_files:
         forward . 8.8.8.8 1.1.1.1
       }
 
-  #────────────────────────────────────────────────────────
-  # Base de datos DNS OKD
-  #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
@@ -125,9 +118,10 @@ write_files:
 
       *.apps      IN A 10.56.0.13
 
-  #────────────────────────────────────────────────────────
-  # CoreDNS servicio systemd
-  #────────────────────────────────────────────────────────
+
+  #--------------------------------------------------------
+  # CoreDNS systemd service
+  #--------------------------------------------------------
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
     content: |
@@ -143,9 +137,10 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-  #────────────────────────────────────────────────────────
-  # HAProxy configuración OKD
-  #────────────────────────────────────────────────────────
+
+  #--------------------------------------------------------
+  # HAProxy Config
+  #--------------------------------------------------------
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
     content: |
@@ -191,9 +186,10 @@ write_files:
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
 
-  #────────────────────────────────────────────────────────
-  # Chrony — NTP
-  #────────────────────────────────────────────────────────
+
+  #--------------------------------------------------------
+  # Chrony (NTP Correcto)
+  #--------------------------------------------------------
   - path: /etc/chrony.conf
     permissions: "0644"
     content: |
@@ -213,35 +209,19 @@ write_files:
 runcmd:
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
-  - rm -f /etc/resolv.conf
-  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
-
+  # Descargar CoreDNS
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - chmod +x /usr/local/bin/coredns
 
-  # aplicar IP fija de NetworkManager
+  # Aplicar configuración de red
+  - systemctl restart NetworkManager
   - nmcli connection reload
   - nmcli connection up eth0
 
-  - systemctl daemon-reload
+  # Activar servicios
   - systemctl enable NetworkManager firewalld chronyd coredns haproxy
-  - systemctl restart NetworkManager firewalld chronyd coredns haproxy
-
-  # SELinux FIX
-  - setsebool -P haproxy_connect_any 1
-  - setsebool -P httpd_can_network_connect 1
-  - semanage port -a -t http_port_t -p tcp 6443 || true
-  - semanage port -a -t http_port_t -p tcp 22623 || true
-
-  # Firewall OKD
-  - firewall-cmd --permanent --add-port=53/tcp
-  - firewall-cmd --permanent --add-port=53/udp
-  - firewall-cmd --permanent --add-port=80/tcp
-  - firewall-cmd --permanent --add-port=443/tcp
-  - firewall-cmd --permanent --add-port=6443/tcp
-  - firewall-cmd --permanent --add-port=22623/tcp
-  - firewall-cmd --reload
+  - systemctl restart firewalld chronyd coredns haproxy
 
 timezone: ${timezone}
