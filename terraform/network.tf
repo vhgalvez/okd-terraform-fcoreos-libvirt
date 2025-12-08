@@ -9,9 +9,14 @@ resource "libvirt_network" "okd_net" {
 
   dhcp {
     enabled = true
+
+    range {
+      start = "10.56.0.2"
+      end   = "10.56.0.254"
+    }
   }
 
   dns {
-    enabled = false
+    enabled = true
   }
 }
