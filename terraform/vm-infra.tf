@@ -30,6 +30,7 @@ data "template_file" "infra_cloud_init" {
   }
 }
 
+
 ###############################################
 # CLOUD-INIT DISK
 ###############################################
@@ -56,6 +57,11 @@ resource "libvirt_domain" "infra" {
   cpu {
     mode = "host-passthrough"
   }
+ 
+# Arquitectura y máquina
+arch    = "x86_64"
+machine = "pc"
+
 
   # Disco raíz AlmaLinux
   disk {
@@ -69,8 +75,10 @@ resource "libvirt_domain" "infra" {
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.infra.mac
-    # puedes dejar sin wait_for_lease para que no bloquee el apply
-    # wait_for_lease = true
+    addresses  = [each.value.ip]
+
+
+
   }
 
   # Consola serie

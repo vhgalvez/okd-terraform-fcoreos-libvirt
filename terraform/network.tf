@@ -7,6 +7,10 @@ resource "libvirt_network" "okd_net" {
   autostart = true
   addresses = [var.network_cidr]
 
+  dhcp {
+    enabled = true
+  }
+
   dns {
     enabled = true
   }
