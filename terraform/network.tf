@@ -1,5 +1,8 @@
 # terraform/network.tf
 
+###############################################
+# RED OKD (libvirt_network)
+###############################################
 resource "libvirt_network" "okd_net" {
   name      = var.network_name
   autostart = true
@@ -12,11 +15,10 @@ resource "libvirt_network" "okd_net" {
     name = "${var.cluster_name}.${var.cluster_domain}"
   }
 
-  # IP de la red (nuevo modelo ips)
   ips = [
     {
       family  = "ipv4"
-      address = cidrhost(var.network_cidr, 1)   # 10.56.0.1
+      address = cidrhost(var.network_cidr, 1) # 10.56.0.1
       netmask = cidrnetmask(var.network_cidr)
 
       dhcp = {
@@ -46,7 +48,6 @@ resource "libvirt_network" "okd_net" {
     }
   ]
 
-  # DNS según schema 0.9.1
   dns = {
     host = [
       {
@@ -57,7 +58,6 @@ resource "libvirt_network" "okd_net" {
       }
     ]
 
-    # Forwarder externo (tu variable)
     forwarders = [
       { addr = var.infra_ip }
     ]
