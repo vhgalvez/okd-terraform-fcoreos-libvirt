@@ -111,28 +111,5 @@ resource "libvirt_domain" "infra" {
         target_port = "0"
       }
     ]
-
-    # Configuración VNC para acceso local
-    graphics = [
-      {
-        type = "vnc"
-        vnc = {
-          autoport = "yes"
-          listen = {
-            type    = "address"
-            address = "127.0.0.1"
-          }
-        }
-      }
-    ]
-
-    # Tarjeta de video (recomendado con graphics)
-    videos = [
-      {
-        model = {
-          type = "qxl"
-        }
-      }
-    ]
   }
 }
