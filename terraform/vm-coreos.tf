@@ -75,6 +75,7 @@ resource "libvirt_domain" "bootstrap" {
     network_name = libvirt_network.okd_net.name
     mac          = var.bootstrap.mac
     addresses    = [var.bootstrap.ip]
+    wait_for_lease = true
   }
 
   console {
@@ -116,7 +117,9 @@ resource "libvirt_domain" "master" {
 
   network_interface {
     network_name = libvirt_network.okd_net.name
+    addresses    = [var.master.ip]
     mac          = var.master.mac
+    wait_for_lease = true
   }
 
   console {
@@ -157,6 +160,8 @@ resource "libvirt_domain" "worker" {
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.worker.mac
+    addresses    = [var.worker.ip]
+    wait_for_lease = true
   }
 
   console {
