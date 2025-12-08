@@ -75,10 +75,9 @@ machine = "pc"
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.infra.mac
-    addresses  = [each.value.ip]
-
-
-
+    addresses    = [each.value.ip]
+    dns1         = var.dns1
+    dns2        = var.dns2
   }
 
   # Consola serie
