@@ -6,14 +6,14 @@ resource "libvirt_volume" "infra_disk" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
-  # Importa la imagen local de AlmaLinux (Sintaxis v0.9.1)
-  create {
-    content {
+  # Importa la imagen local de AlmaLinux (Convertido a Mapa HCL)
+  create = {
+    content = {
       url = var.almalinux_image
     }
   }
 
-  target {
+  target = { # Convertido a Mapa HCL
     format = "qcow2"
   }
 }
@@ -66,25 +66,25 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  cpu {
+  cpu = { # Convertido a Mapa HCL
     mode = "host-passthrough"
   }
 
-  os {
+  os = { # Convertido a Mapa HCL
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
     boot_devices = [{ dev = "hd" }]
   }
 
-  # CONFIGURACIÓN DE GRÁFICOS (VNC) - Bloque de nivel superior
-  graphics {
+  # CONFIGURACIÓN DE GRÁFICOS (VNC) - Convertido a Mapa HCL
+  graphics = {
     type     = "vnc"
     autoport = true
-    listen   = "127.0.0.1" # ✅ Actualizado a acceso local (localhost)
+    listen   = "127.0.0.1"
   }
 
-  devices {
+  devices = { # Convertido a Mapa HCL
     disks = [
       {
         # 1. Disco principal de AlmaLinux (vda)
@@ -127,11 +127,13 @@ resource "libvirt_domain" "infra" {
       }
     ]
 
-    # TARJETA DE VIDEO (video como bloque dentro de devices)
-    video {
-      model {
-        type = "qxl"
-      }
-    }
+    # TARJETA DE VIDEO (videos como lista de mapas, forzado por devices={...})
+    videos = [
+        {
+            model = {
+                type = "qxl"
+            }
+        }
+    ]
   }
 }
