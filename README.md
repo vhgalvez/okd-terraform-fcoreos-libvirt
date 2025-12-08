@@ -475,5 +475,6 @@ sudo virsh net-dhcp-leases okd-net
     network_name = libvirt_network.okd_net.name
     mac          = var.bootstrap.mac
     addresses    = [var.bootstrap.ip]
+    hostname     = var.bootstrap.hostname
     wait_for_lease = true
   }
