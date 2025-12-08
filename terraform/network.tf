@@ -5,15 +5,11 @@ resource "libvirt_network" "okd_net" {
   bridge    = "virbr_okd"
   domain    = "${var.cluster_name}.${var.cluster_domain}"
   autostart = true
+
   addresses = [var.network_cidr]
 
   dhcp {
     enabled = true
-
-    range {
-      start = "10.56.0.2"
-      end   = "10.56.0.254"
-    }
   }
 
   dns {
