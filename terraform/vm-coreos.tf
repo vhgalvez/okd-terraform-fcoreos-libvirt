@@ -3,7 +3,7 @@
 # FEDORA COREOS BASE + DISKS (OKD NODES)
 ###############################################
 
-# Volumen base de Fedora CoreOS (importa la imagen qcow2 local)
+# Volumen base de Fedora CoreOS
 resource "libvirt_volume" "coreos_base" {
   name   = "fcos-base.qcow2"
   pool   = libvirt_pool.okd.name
@@ -11,7 +11,7 @@ resource "libvirt_volume" "coreos_base" {
   format = "qcow2"
 }
 
-# Overlays para cada nodo (copy-on-write sobre coreos_base)
+# Discos COW para los nodos
 resource "libvirt_volume" "bootstrap_disk" {
   name           = "bootstrap.qcow2"
   pool           = libvirt_pool.okd.name
@@ -69,26 +69,35 @@ resource "libvirt_domain" "bootstrap" {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-  # Interfaz de red
+  # Ignition FCOS
+  coreos_ignition = libvirt_ignition.bootstrap.id
+  fw_cfg_name     = "opt/com.coreos/config"
+
+  # Red
   network_interface {
     network_name   = libvirt_network.okd_net.name
     mac            = var.bootstrap.mac
     wait_for_lease = true
   }
 
-  # Consola serie
+  # Consola
   console {
     type        = "pty"
     target_type = "serial"
     target_port = "0"
   }
 
-  # Ignition para Fedora CoreOS
-  coreos_ignition = libvirt_ignition.bootstrap.id
-  # OJO: este nombre depende de la implementación de FCOS.
-  # Para Fedora CoreOS suele ser "opt/org.fedoraproject/config"
-  # o "opt/com.coreos/config". Ajusta si fuera necesario.
-  fw_cfg_name     = "opt/com.coreos/config"
+  # VNC (compatible siempre)
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  video {
+    type = "vga"
+  }
 }
 
 ###############################################
@@ -104,6 +113,9 @@ resource "libvirt_domain" "master" {
     volume_id = libvirt_volume.master_disk.id
   }
 
+  coreos_ignition = libvirt_ignition.master.id
+  fw_cfg_name     = "opt/com.coreos/config"
+
   network_interface {
     network_name   = libvirt_network.okd_net.name
     mac            = var.master.mac
@@ -116,8 +128,16 @@ resource "libvirt_domain" "master" {
     target_port = "0"
   }
 
-  coreos_ignition = libvirt_ignition.master.id
-  fw_cfg_name     = "opt/com.coreos/config"
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  video {
+    type = "vga"
+  }
 }
 
 ###############################################
@@ -133,6 +153,9 @@ resource "libvirt_domain" "worker" {
     volume_id = libvirt_volume.worker_disk.id
   }
 
+  coreos_ignition = libvirt_ignition.worker.id
+  fw_cfg_name     = "opt/com.coreos/config"
+
   network_interface {
     network_name   = libvirt_network.okd_net.name
     mac            = var.worker.mac
@@ -145,6 +168,14 @@ resource "libvirt_domain" "worker" {
     target_port = "0"
   }
 
-  coreos_ignition = libvirt_ignition.worker.id
-  fw_cfg_name     = "opt/com.coreos/config"
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  video {
+    type = "vga"
+  }
 }
