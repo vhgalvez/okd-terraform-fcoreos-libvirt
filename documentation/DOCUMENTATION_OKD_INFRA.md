@@ -523,3 +523,71 @@ dig @10.56.0.10 worker.okd.okd.local
 
 dig @10.56.0.10 test.apps.okd.okd.local
 dig @10.56.0.10 apps.okd.okd.local
+
+
+
+
+
++-----------------------------------------------------------------------------------------------------------------------------------+
+|                                     NODO INFRA (okd-infra: 10.56.0.10)                                                            |
++-----------------------------------------------------------------------------------------------------------------------------------+
+|                                                                                                                                      |
+|   +-----------+                                                                                                                      |
+|   | **CoreDNS** |                                                                                                                      |
+|   |  (53/UDP)   |                                                                                                                      |
+|   +-----+-----+                                                                                                                      |
+|         |                                                                                                                              |
+|         +---------------------------------+---------------------------------+---------------------------------+                         |
+|         v                                     v                                 v                                 v                         |
+|  Consultas DNS                 **api** / **api-int**                   ***.apps**                    **Config** |
+|                                    (6443)                                 (80, 443)                            (22623) |
+|                                                                                                                                      |
+|                                                             **HAProxy (Load Balancer)**                                          |
+|                                                                                                                                      |
+|                                                   +-----------+             +-----------+                                           |
+|                                                   v                         v                                                         |
++-----------------------------------------------------------------------------------------------------------------------------------+
+                                                **okd-master**           **okd-worker**                                                
+                                                 (10.56.0.12)             (10.56.0.13)                                                
+                                                /                                                                                        
+                                          **okd-bootstrap**                                                                              
+                                           (10.56.0.11)                                                                                
+
+---
+
+## 🔑 Puntos Clave del Diseño
+
+### 1. DNS Centralizado y Autoridad (CoreDNS)
+
+La clave es que `okd-infra` (10.56.0.10) es el servidor **DNS principal** para la zona `okd-lab.cefaslocalserver.com`.
+
+* **API / Ingress Wildcard:** Los registros críticos como `api`, `api-int`, y `*.apps` son resueltos directamente a la IP del propio `okd-infra` (`10.56.0.10`).
+* **Encaminamiento al LB:** Esto asegura que la solicitud TCP/HTTP(S) posterior sea dirigida al **HAProxy** de `okd-infra`, delegando el balanceo de carga en el backend.
+
+### 2. Balanceo de Carga Lógico (HAProxy)
+
+El fichero `haproxy.cfg` define la lógica de distribución del tráfico basado en el puerto:
+
+| Puerto | Frontend | Backend | Nodos Destino | Nota de Estado Inicial |
+| :--- | :--- | :--- | :--- | :--- |
+| **6443** | `api` | `api_nodes` | `bootstrap` (11), `master` (12) | Sirve API Server. El bootstrap es temporal. |
+| **22623** | `mcs` | `mcs_nodes` | `bootstrap` (11) | Machine Config Server, clave durante la instalación. |
+| **80** | `ingress80` | `worker_ingress` | `worker` (13) | Tráfico HTTP de aplicaciones (ej. router/ingress). |
+| **443** | `ingress443` | `worker_ingress` | `worker` (13) | Tráfico HTTPS de aplicaciones (ej. router/ingress). |
+
+### 3. Endurecimiento (Firewall)
+
+Actualmente, `firewalld` abre los puertos globalmente. La nota sobre el endurecimiento es crítica: **limitar el acceso** a los puertos **53, 80, 443, 6443, 22623** solo a la subred interna `10.56.0.0/24` mediante una zona de firewalld o reglas `nftables` (como se sugiere) es una buena práctica de seguridad.
+
+---
+
+## 📈 Escalado del Clúster
+
+El diseño facilita el escalado horizontal sin necesidad de reconfigurar los nodos OKD existentes, ya que todos apuntan siempre a `10.56.0.10`.
+
+| Tarea de Escalado | Componente(s) a Modificar en `okd-infra` |
+| :--- | :--- |
+| **Añadir Master(s)** | 1. `db.okd`: Añadir registros A para los nuevos masters. 2. `haproxy.cfg`: Añadir `server` en `backend api_nodes`. |
+| **Añadir Worker(s)** | 1. `db.okd`: Opcional (si usas nombres de host). 2. `haproxy.cfg`: Añadir `server` en `backend worker_ingress`. |
+
+¿Te gustaría que profundizáramos en los comandos de configuración de **nftables** o **firewalld** para aplicar el endurecimiento (hardening) recomendado?
