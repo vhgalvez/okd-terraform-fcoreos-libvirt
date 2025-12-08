@@ -6,17 +6,15 @@ resource "libvirt_volume" "infra_disk" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
-  # Importa la imagen local de AlmaLinux
-  create = {
-    content = {
+  # Importa la imagen local de AlmaLinux (Sintaxis v0.9.1)
+  create {
+    content {
       url = var.almalinux_image
     }
   }
 
-  target = {
-    format = {
-      type = "qcow2"
-    }
+  target {
+    format = "qcow2"
   }
 }
 
@@ -46,7 +44,7 @@ data "template_file" "infra_cloud_init" {
 }
 
 ###############################################
-# CLOUD-INIT DISK (SIN pool)
+# CLOUD-INIT DISK
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
@@ -68,23 +66,28 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  cpu = {
+  cpu {
     mode = "host-passthrough"
   }
 
-  os = {
+  os {
     type         = "hvm"
     type_arch    = "x86_64"
     type_machine = "q35"
     boot_devices = [{ dev = "hd" }]
   }
 
-  # Conecta el disco de cloud-init
-  cloudinit = libvirt_cloudinit_disk.infra_init.id
+  # CONFIGURACIÓN DE GRÁFICOS (VNC) - Bloque de nivel superior
+  graphics {
+    type     = "vnc"
+    autoport = true
+    listen   = "127.0.0.1" # ✅ Actualizado a acceso local (localhost)
+  }
 
-  devices = {
+  devices {
     disks = [
       {
+        # 1. Disco principal de AlmaLinux (vda)
         source = {
           volume = {
             pool   = libvirt_volume.infra_disk.pool
@@ -93,6 +96,14 @@ resource "libvirt_domain" "infra" {
         }
         target = {
           dev = "vda"
+          bus = "virtio"
+        }
+      },
+      {
+        # 2. Disco Cloud-Init (vdb) - Sintaxis de conexión v0.9.1
+        cloudinit = libvirt_cloudinit_disk.infra_init.id
+        target = {
+          dev = "vdb"
           bus = "virtio"
         }
       }
@@ -115,5 +126,12 @@ resource "libvirt_domain" "infra" {
         target_port = "0"
       }
     ]
+
+    # TARJETA DE VIDEO (video como bloque dentro de devices)
+    video {
+      model {
+        type = "qxl"
+      }
+    }
   }
 }

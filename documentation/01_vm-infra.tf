@@ -1,4 +1,4 @@
-# terraform/vm-infra.tf
+# terraform\vm-infra.tf
 ###############################################
 # DISCO DEL NODO INFRA (AlmaLinux)
 ###############################################
@@ -6,8 +6,7 @@ resource "libvirt_volume" "infra_disk" {
   name = "okd-infra.qcow2"
   pool = libvirt_pool.okd.name
 
-  # Imagen base AlmaLinux (ruta local o URL)
-  # OJO: var.almalinux_image debe existir y ser legible por libvirtd
+  # Importa la imagen local de AlmaLinux
   create = {
     content = {
       url = var.almalinux_image
@@ -47,33 +46,16 @@ data "template_file" "infra_cloud_init" {
 }
 
 ###############################################
-# CLOUD-INIT ISO
+# CLOUD-INIT DISK (SIN pool)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
   user_data = data.template_file.infra_cloud_init.rendered
 
   meta_data = yamlencode({
-    instance-id    = "okd-infra"
-    local-hostname = var.infra.hostname
+    "instance-id"    = "okd-infra"
+    "local-hostname" = var.infra.hostname
   })
-}
-
-resource "libvirt_volume" "infra_cloudinit" {
-  name = "infra-cloudinit.iso"
-  pool = libvirt_pool.okd.name
-
-  create = {
-    content = {
-      url = libvirt_cloudinit_disk.infra_init.path
-    }
-  }
-
-  target = {
-    format = {
-      type = "raw"
-    }
-  }
 }
 
 ###############################################
@@ -97,10 +79,12 @@ resource "libvirt_domain" "infra" {
     boot_devices = [{ dev = "hd" }]
   }
 
+  # Conecta el disco de cloud-init
+  cloudinit = libvirt_cloudinit_disk.infra_init.id
+
   devices = {
     disks = [
       {
-        # Disco principal de AlmaLinux
         source = {
           volume = {
             pool   = libvirt_volume.infra_disk.pool
@@ -111,19 +95,6 @@ resource "libvirt_domain" "infra" {
           dev = "vda"
           bus = "virtio"
         }
-      },
-      {
-        # Segundo disco: ISO de cloud-init
-        source = {
-          volume = {
-            pool   = libvirt_volume.infra_cloudinit.pool
-            volume = libvirt_volume.infra_cloudinit.name
-          }
-        }
-        target = {
-          dev = "vdb"
-          bus = "virtio"
-        }
       }
     ]
 
@@ -131,16 +102,12 @@ resource "libvirt_domain" "infra" {
       {
         model = { type = "virtio" }
         source = {
-          network = {
-            network = libvirt_network.okd_net.name
-          }
+          network = { network = libvirt_network.okd_net.name }
         }
         mac = { address = var.infra.mac }
       }
     ]
 
-    # Consola serie para ver el boot:
-    #   sudo virsh console okd-infra
     consoles = [
       {
         type        = "pty"
@@ -150,3 +117,4 @@ resource "libvirt_domain" "infra" {
     ]
   }
 }
+
