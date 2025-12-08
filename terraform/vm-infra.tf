@@ -19,18 +19,18 @@ data "template_file" "infra_cloud_init" {
     hostname       = var.infra.hostname
     short_hostname = split(".", var.infra.hostname)[0]
 
-    ip             = var.infra.ip
-    gateway        = var.gateway
+    ip      = var.infra.ip
+    gateway = var.gateway
 
-    dns1           = var.dns1
-    dns2           = var.dns2
+    dns1 = var.dns1
+    dns2 = var.dns2
 
     cluster_domain = var.cluster_domain
     cluster_name   = var.cluster_name
     cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
 
-    ssh_keys       = join("\n", var.ssh_keys)
-    timezone       = var.timezone
+    ssh_keys = join("\n", var.ssh_keys)
+    timezone = var.timezone
   }
 }
 
