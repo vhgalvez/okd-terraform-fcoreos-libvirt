@@ -52,25 +52,35 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
+  # 🔥 CPU REAL DEL HOST (evita el panic)
+  cpu {
+    mode = "host-passthrough"
+  }
+
+  # Disco raíz AlmaLinux
   disk {
     volume_id = libvirt_volume.infra_disk.id
   }
 
+  # Cloud-init
   cloudinit = libvirt_cloudinit_disk.infra_init.id
 
+  # Interfaz de red
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.infra.mac
-    # Eliminado para acelerar terraform apply
+    # puedes dejar sin wait_for_lease para que no bloquee el apply
     # wait_for_lease = true
   }
 
+  # Consola serie
   console {
     type        = "pty"
     target_type = "serial"
     target_port = 0
   }
 
+  # VNC + VGA para ver arranque
   graphics {
     type           = "vnc"
     listen_type    = "address"
