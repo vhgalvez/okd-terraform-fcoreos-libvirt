@@ -58,7 +58,9 @@ resource "libvirt_cloudinit_disk" "infra_init" {
   })
 }
 
-# Volumen RAW que contiene el cloud-init renderizado
+###############################################
+# CLOUD-INIT RAW VOLUME
+###############################################
 resource "libvirt_volume" "infra_cloudinit" {
   name = "infra-cloudinit.raw"
   pool = libvirt_pool.okd.name
@@ -86,17 +88,16 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  # Reutilizamos los locals de vm-coreos.tf
   os  = local.domain_os
   cpu = local.cpu_conf
 
   devices = {
+
     ###########################################
     # DISKS
     ###########################################
     disks = [
       {
-        # Disco principal AlmaLinux (vda)
         source = {
           volume = {
             pool   = libvirt_volume.infra_disk.pool
@@ -109,7 +110,6 @@ resource "libvirt_domain" "infra" {
         }
       },
       {
-        # Cloud-init (vdb)
         source = {
           volume = {
             pool   = libvirt_volume.infra_cloudinit.pool
@@ -148,35 +148,23 @@ resource "libvirt_domain" "infra" {
     ]
 
     ###########################################
-    # GRAPHICS: VNC + SPICE (HÍBRIDO)
+    # GRAPHICS — VNC (SINTAXIS REAL 0.9.1)
     ###########################################
     graphics = [
-      # VNC local
       {
-        type = "vnc"
-        vnc = {
-          listen   = "127.0.0.1"
-          autoport = "yes"
-        }
-      },
-
-      # SPICE local
-      {
-        type = "spice"
-        spice = {
-          listen   = "127.0.0.1"
-          autoport = "yes"
-        }
+        type     = "vnc"
+        listen   = "127.0.0.1"
+        autoport = "yes"
       }
     ]
 
     ###########################################
-    # VIDEO (RECOMENDADO CON GRAPHICS)
+    # VIDEO — VGA (COMPATIBLE)
     ###########################################
     videos = [
       {
         model = {
-          type = "qxl"
+          type = "vga"
         }
       }
     ]
