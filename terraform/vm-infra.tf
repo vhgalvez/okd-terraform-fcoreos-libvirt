@@ -30,7 +30,6 @@ data "template_file" "infra_cloud_init" {
   }
 }
 
-
 ###############################################
 # CLOUD-INIT DISK
 ###############################################
@@ -57,7 +56,7 @@ resource "libvirt_domain" "infra" {
   cpu {
     mode = "host-passthrough"
   }
- 
+
 # Arquitectura y máquina
 arch    = "x86_64"
 machine = "pc"
@@ -75,9 +74,7 @@ machine = "pc"
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.infra.mac
-    addresses    = each.value.ip
-    dns1         = var.dns1
-    dns2         = var.dns2
+    addresses    = [var.infra.ip]
   }
 
   # Consola serie
