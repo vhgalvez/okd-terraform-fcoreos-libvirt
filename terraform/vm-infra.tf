@@ -3,18 +3,10 @@
 # DISCO DEL NODO INFRA (AlmaLinux)
 ###############################################
 resource "libvirt_volume" "infra_disk" {
-  name = "okd-infra.qcow2"
-  pool = libvirt_pool.okd.name
-
-  create = {
-    content = {
-      url = var.almalinux_image
-    }
-  }
-
-  target = {
-    format = { type = "qcow2" }
-  }
+  name   = "okd-infra.qcow2"
+  pool   = libvirt_pool.okd.name
+  source = var.almalinux_image
+  format = "qcow2"
 }
 
 ###############################################
@@ -26,20 +18,24 @@ data "template_file" "infra_cloud_init" {
   vars = {
     hostname       = var.infra.hostname
     short_hostname = split(".", var.infra.hostname)[0]
+
     ip             = var.infra.ip
     gateway        = var.gateway
+
     dns1           = var.dns1
     dns2           = var.dns2
+
     cluster_domain = var.cluster_domain
     cluster_name   = var.cluster_name
     cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
+
     ssh_keys       = join("\n", var.ssh_keys)
     timezone       = var.timezone
   }
 }
 
 ###############################################
-# CLOUD-INIT (libvirt_cloudinit_disk)
+# CLOUD-INIT DISK (ISO RAW INTERNO)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
@@ -52,19 +48,13 @@ resource "libvirt_cloudinit_disk" "infra_init" {
 }
 
 ###############################################
-# CLOUD-INIT RAW VOLUME
+# RAW DISK A PARTIR DEL CLOUD-INIT
 ###############################################
 resource "libvirt_volume" "infra_cloudinit" {
-  name = "infra-cloudinit.raw"
-  pool = libvirt_pool.okd.name
-
-  create = {
-    content = {
-      url = libvirt_cloudinit_disk.infra_init.path
-    }
-  }
-
-  target = { format = { type = "raw" } }
+  name   = "infra-cloudinit.raw"
+  pool   = libvirt_pool.okd.name
+  source = libvirt_cloudinit_disk.infra_init.path
+  format = "raw"
 }
 
 ###############################################
@@ -77,6 +67,7 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
+  # Reutilizamos los locals definidos en vm-coreos.tf
   os  = local.domain_os
   cpu = local.cpu_conf
 
@@ -92,7 +83,10 @@ resource "libvirt_domain" "infra" {
             volume = libvirt_volume.infra_disk.name
           }
         }
-        target = { dev = "vda", bus = "virtio" }
+        target = {
+          dev = "vda"
+          bus = "virtio"
+        }
       },
       {
         source = {
@@ -101,45 +95,30 @@ resource "libvirt_domain" "infra" {
             volume = libvirt_volume.infra_cloudinit.name
           }
         }
-        target = { dev = "vdb", bus = "virtio" }
+        target = {
+          dev = "vdb"
+          bus = "virtio"
+        }
       }
     ]
 
     ###########################################
-    # NETWORK
+    # NETWORK INTERFACE
     ###########################################
     interfaces = [
       {
         model = { type = "virtio" }
         source = {
-          network = { network = libvirt_network.okd_net.name }
+          network = {
+            network = libvirt_network.okd_net.name
+          }
         }
         mac = { address = var.infra.mac }
       }
     ]
 
     ###########################################
-    # GRAPHICS (VNC)
-    ###########################################
-    graphics = [
-      {
-        type     = "vnc"
-        listen   = "127.0.0.1"
-        autoport = true
-      }
-    ]
-
-    ###########################################
-    # VIDEO (VGA — estable en 0.9.0)
-    ###########################################
-    videos = [
-      {
-        model = { type = "vga" }
-      }
-    ]
-
-    ###########################################
-    # SERIAL CONSOLE
+    # CONSOLE (SERIAL)
     ###########################################
     consoles = [
       {
