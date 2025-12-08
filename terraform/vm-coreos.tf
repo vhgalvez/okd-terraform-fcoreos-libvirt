@@ -1,6 +1,6 @@
 # terraform/vm-coreos.tf
 ###############################################
-# FEDORA COREOS BASE
+# FEDORA COREOS BASE IMAGE
 ###############################################
 
 resource "libvirt_volume" "coreos_base" {
@@ -11,7 +11,7 @@ resource "libvirt_volume" "coreos_base" {
 }
 
 ###############################################
-# OVERLAYS
+# VM OVERLAY DISKS
 ###############################################
 
 resource "libvirt_volume" "bootstrap_disk" {
@@ -71,12 +71,11 @@ resource "libvirt_domain" "bootstrap" {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
-
   network_interface {
-    network_name = libvirt_network.okd_net.name
-    mac          = var.bootstrap.mac
-    addresses    = [var.bootstrap.ip]
-    hostname     = var.bootstrap.hostname
+    network_name   = libvirt_network.okd_net.name
+    mac            = var.bootstrap.mac
+    addresses      = [var.bootstrap.ip]
+    hostname       = var.bootstrap.hostname
     wait_for_lease = true
   }
 
@@ -90,7 +89,6 @@ resource "libvirt_domain" "bootstrap" {
     target_port = 0
   }
 
-  # ✔ VNC (no spice)
   graphics {
     type           = "vnc"
     listen_type    = "address"
@@ -98,10 +96,15 @@ resource "libvirt_domain" "bootstrap" {
     autoport       = true
   }
 
-  # ✔ Video VGA
   video {
     type = "vga"
   }
+
+  # 🔥 FIX CRÍTICO: reloj RTC correcto para evitar errores x509
+  qemu_commandline = [
+    "-rtc",
+    "base=utc"
+  ]
 
   coreos_ignition = libvirt_ignition.bootstrap.id
   fw_cfg_name     = "opt/com.coreos/config"
@@ -121,16 +124,16 @@ resource "libvirt_domain" "master" {
     volume_id = libvirt_volume.master_disk.id
   }
 
-  cpu {
-    mode = "host-passthrough"
+  network_interface {
+    network_name   = libvirt_network.okd_net.name
+    mac            = var.master.mac
+    addresses      = [var.master.ip]
+    hostname       = var.master.hostname
+    wait_for_lease = true
   }
 
-  network_interface {
-    network_name = libvirt_network.okd_net.name
-    mac          = var.master.mac
-    addresses    = [var.master.ip]
-    hostname     = var.master.hostname
-    wait_for_lease = true
+  cpu {
+    mode = "host-passthrough"
   }
 
   console {
@@ -149,6 +152,12 @@ resource "libvirt_domain" "master" {
   video {
     type = "vga"
   }
+
+  # 🔥 FIX reloj RTC correcto
+  qemu_commandline = [
+    "-rtc",
+    "base=utc"
+  ]
 
   coreos_ignition = libvirt_ignition.master.id
   fw_cfg_name     = "opt/com.coreos/config"
@@ -168,16 +177,16 @@ resource "libvirt_domain" "worker" {
     volume_id = libvirt_volume.worker_disk.id
   }
 
-  cpu {
-    mode = "host-passthrough"
+  network_interface {
+    network_name   = libvirt_network.okd_net.name
+    mac            = var.worker.mac
+    addresses      = [var.worker.ip]
+    hostname       = var.worker.hostname
+    wait_for_lease = true
   }
 
-  network_interface {
-    network_name = libvirt_network.okd_net.name
-    mac          = var.worker.mac
-    addresses    = [var.worker.ip]
-    hostname     = var.worker.hostname
-    wait_for_lease = true
+  cpu {
+    mode = "host-passthrough"
   }
 
   console {
@@ -196,6 +205,12 @@ resource "libvirt_domain" "worker" {
   video {
     type = "vga"
   }
+
+  # 🔥 FIX reloj RTC correcto
+  qemu_commandline = [
+    "-rtc",
+    "base=utc"
+  ]
 
   coreos_ignition = libvirt_ignition.worker.id
   fw_cfg_name     = "opt/com.coreos/config"
