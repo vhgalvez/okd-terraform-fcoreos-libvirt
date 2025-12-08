@@ -61,7 +61,7 @@ write_files:
       {
         echo "127.0.0.1   localhost"
         echo "::1         localhost"
-        echo "${ip}  ${hostname} ${SHORT}"
+        echo "${ip}  ${hostname} ${"$"}{SHORT}"
       } > /etc/hosts
 
   #────────────────────────────────────────────────────────
