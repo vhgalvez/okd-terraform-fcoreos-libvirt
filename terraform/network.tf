@@ -8,11 +8,10 @@ resource "libvirt_network" "okd_net" {
   addresses = [var.network_cidr]
 
   dhcp {
-    enabled = true
+    enabled = false
   }
 
-  # The dns block should be inside the resource block
   dns {
-    enabled = true
+    enabled = false
   }
 }

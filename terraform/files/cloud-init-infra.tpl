@@ -27,13 +27,16 @@ growpart:
 
 resize_rootfs: true
 
+
 ###########################################################
 # WRITE_FILES
 ###########################################################
 
 write_files:
 
-  # /etc/hosts dinámico
+  #────────────────────────────────────────
+  # hosts local
+  #────────────────────────────────────────
   - path: /usr/local/bin/set-hosts.sh
     permissions: "0755"
     content: |
@@ -43,14 +46,37 @@ write_files:
       echo "::1       localhost" >> /etc/hosts
       echo "${ip} ${hostname} $SHORT" >> /etc/hosts
 
-  # sysctl requerido para OKD
+  #────────────────────────────────────────
+  # sysctl tuning OKD
+  #────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
     content: |
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
 
-  # CoreDNS: zona principal
+  #────────────────────────────────────────
+  # evitar override resolv.conf
+  #────────────────────────────────────────
+  - path: /etc/NetworkManager/conf.d/dns.conf
+    permissions: "0644"
+    content: |
+      [main]
+      dns=none
+
+  #────────────────────────────────────────
+  # resolv.conf real
+  #────────────────────────────────────────
+  - path: /etc/resolv.conf
+    permissions: "0644"
+    content: |
+      nameserver ${dns1}
+      nameserver ${dns2}
+      search ${cluster_name}.${cluster_domain}
+
+  #────────────────────────────────────────
+  # CoreDNS
+  #────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
@@ -61,7 +87,6 @@ write_files:
         forward . 8.8.8.8 1.1.1.1
       }
 
-  # Base de datos DNS OKD
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
@@ -77,14 +102,12 @@ write_files:
 
       api         IN A 10.56.0.11
       api-int     IN A 10.56.0.11
-
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
       worker      IN A 10.56.0.13
 
       *.apps      IN A 10.56.0.13
 
-  # CoreDNS servicio systemd
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
     content: |
@@ -100,7 +123,9 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-  # HAProxy configuración OKD
+  #────────────────────────────────────────
+  # HAProxy
+  #────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
     content: |
@@ -146,7 +171,9 @@ write_files:
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
 
-  # Chrony — NTP (no se toca)
+  #────────────────────────────────────────
+  # Chrony (NTP)
+  #────────────────────────────────────────
   - path: /etc/chrony.conf
     permissions: "0644"
     content: |
@@ -158,13 +185,29 @@ write_files:
       server 1.pool.ntp.org iburst
       server 2.pool.ntp.org iburst
 
+
 ###########################################################
 # RUNCMD
 ###########################################################
 
 runcmd:
-  - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
+  - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils NetworkManager
 
+  # -------------------
+  # 🔥 FIX DEFINITIVO IP FIJA
+  # -------------------
+  - nmcli connection show --active | grep -E "eth0|System" | awk '{print $1}' | xargs -r -I {} nmcli connection down "{}" || true
+  - nmcli connection show | grep -E "eth0|System" | awk '{print $1}' | xargs -r -I {} nmcli connection delete "{}" || true
+  - rm -f /etc/sysconfig/network-scripts/ifcfg-eth0 || true
+  - rm -f /etc/NetworkManager/system-connections/*.nmconnection || true
+
+  # Crear configuración limpia
+  - nmcli connection add type ethernet con-name eth0 ifname eth0 ipv4.method manual ipv4.addresses "${ip}/24" ipv4.gateway "${gateway}" ipv4.dns "${dns1},${dns2}" ipv4.dns-search "${cluster_domain}"
+  - nmcli connection up eth0
+
+  # -------------------
+  # CoreDNS
+  # -------------------
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
@@ -174,7 +217,7 @@ runcmd:
   - systemctl enable NetworkManager firewalld chronyd coredns haproxy
   - systemctl restart NetworkManager firewalld chronyd coredns haproxy
 
-  # SELinux FIX
+  # SELinux fix
   - setsebool -P haproxy_connect_any 1
   - setsebool -P httpd_can_network_connect 1
   - semanage port -a -t http_port_t -p tcp 6443 || true
