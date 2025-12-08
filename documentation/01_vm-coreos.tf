@@ -139,3 +139,43 @@ resource "libvirt_domain" "master" {
     type = "vga"
   }
 }
+
+###############################################
+# WORKER NODE
+###############################################
+resource "libvirt_domain" "worker" {
+  name      = "okd-worker"
+  vcpu      = var.worker.cpus
+  memory    = var.worker.memory
+  autostart = true
+
+  disk {
+    volume_id = libvirt_volume.worker_disk.id
+  }
+
+  coreos_ignition = libvirt_ignition.worker.id
+  fw_cfg_name     = "opt/com.coreos/config"
+
+  network_interface {
+    network_name   = libvirt_network.okd_net.name
+    mac            = var.worker.mac
+    wait_for_lease = true
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
+  }
+
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  video {
+    type = "vga"
+  }
+}
