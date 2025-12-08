@@ -1,80 +1,4 @@
 # terraform/vm-infra.tf
-###############################################
-# DISCO DEL NODO INFRA (AlmaLinux)
-###############################################
-resource "libvirt_volume" "infra_disk" {
-  name = "okd-infra.qcow2"
-  pool = libvirt_pool.okd.name
-
-  # Importa la imagen local de AlmaLinux (qcow2)
-  create = {
-    content = {
-      url = var.almalinux_image
-    }
-  }
-
-  target = {
-    format = {
-      type = "qcow2"
-    }
-  }
-}
-
-###############################################
-# CLOUD-INIT TEMPLATE
-###############################################
-data "template_file" "infra_cloud_init" {
-  template = file("${path.module}/files/cloud-init-infra.tpl")
-
-  vars = {
-    hostname       = var.infra.hostname
-    short_hostname = split(".", var.infra.hostname)[0]
-
-    ip      = var.infra.ip
-    gateway = var.gateway
-
-    dns1 = var.dns1
-    dns2 = var.dns2
-
-    cluster_domain = var.cluster_domain
-    cluster_name   = var.cluster_name
-    cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
-
-    ssh_keys = join("\n", var.ssh_keys)
-    timezone = var.timezone
-  }
-}
-
-###############################################
-# CLOUD-INIT DISK (sin pool para 0.9.1)
-###############################################
-resource "libvirt_cloudinit_disk" "infra_init" {
-  name      = "infra-cloudinit"
-  user_data = data.template_file.infra_cloud_init.rendered
-
-  meta_data = yamlencode({
-    "instance-id"    = "okd-infra"
-    "local-hostname" = var.infra.hostname
-  })
-}
-
-# Volumen RAW que contiene el ISO de cloud-init
-resource "libvirt_volume" "infra_cloudinit" {
-  name = "infra-cloudinit.iso"
-  pool = libvirt_pool.okd.name
-
-  create = {
-    content = {
-      url = libvirt_cloudinit_disk.infra_init.path
-    }
-  }
-
-  target = {
-    format = {
-      type = "raw"
-    }
-  }
-}
 
 ###############################################
 # VM INFRA (HAProxy + CoreDNS)
@@ -98,6 +22,9 @@ resource "libvirt_domain" "infra" {
   }
 
   devices = {
+    ############################################
+    # DISK DEVICES
+    ############################################
     disks = [
       {
         # Disco principal AlmaLinux (vda)
@@ -113,7 +40,7 @@ resource "libvirt_domain" "infra" {
         }
       },
       {
-        # Segundo disco: cloud-init (vdb)
+        # Cloud-init (vdb)
         source = {
           volume = {
             pool   = libvirt_volume.infra_cloudinit.pool
@@ -127,6 +54,9 @@ resource "libvirt_domain" "infra" {
       }
     ]
 
+    ############################################
+    # NETWORK INTERFACE
+    ############################################
     interfaces = [
       {
         model = { type = "virtio" }
@@ -137,11 +67,41 @@ resource "libvirt_domain" "infra" {
       }
     ]
 
+    ############################################
+    # CONSOLE
+    ############################################
     consoles = [
       {
         type        = "pty"
         target_type = "serial"
         target_port = "0"
+      }
+    ]
+
+    ############################################
+    # GRAPHICS (VNC PARA ACCESO LOCAL)
+    ############################################
+    graphics = [
+      {
+        type = "vnc"
+        vnc = {
+          autoport = "yes"
+          listen = {
+            type    = "address"
+            address = "127.0.0.1"
+          }
+        }
+      }
+    ]
+
+    ############################################
+    # VIDEO CARD
+    ############################################
+    videos = [
+      {
+        model = {
+          type = "qxl"
+        }
       }
     ]
   }
