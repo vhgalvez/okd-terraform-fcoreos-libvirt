@@ -21,7 +21,6 @@ data "template_file" "infra_cloud_init" {
 
     ip             = var.infra.ip
     gateway        = var.gateway
-
     dns1           = var.dns1
     dns2           = var.dns2
 
@@ -38,8 +37,7 @@ data "template_file" "infra_cloud_init" {
 # CLOUD-INIT DISK (libvirt_cloudinit_disk)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
-  name      = "infra-cloudinit.iso"
-
+  name      = "infra-cloudinit"
   user_data = data.template_file.infra_cloud_init.rendered
 
   meta_data = yamlencode({
@@ -56,9 +54,6 @@ resource "libvirt_domain" "infra" {
   vcpu      = var.infra.cpus
   memory    = var.infra.memory
   autostart = true
-
-  # Sistema operativo general
-  firmware = "/usr/share/OVMF/OVMF_CODE.fd"
 
   ###########################################
   # DISCO PRINCIPAL
@@ -91,7 +86,7 @@ resource "libvirt_domain" "infra" {
   }
 
   ###########################################
-  # GRAPHICS (VNC SIEMPRE FUNCIONA)
+  # GRAPHICS (VNC COMPATIBLE)
   ###########################################
   graphics {
     type           = "vnc"
@@ -101,7 +96,7 @@ resource "libvirt_domain" "infra" {
   }
 
   ###########################################
-  # VIDEO (VGA ESTABLE)
+  # VIDEO
   ###########################################
   video {
     type = "vga"
