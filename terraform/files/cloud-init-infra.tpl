@@ -56,19 +56,18 @@ write_files:
       [ipv6]
       method=ignore
 
-  #────────────────────────────────────────────────────────
-  # /etc/hosts dinámico
-  #────────────────────────────────────────────────────────
-  - path: /usr/local/bin/set-hosts.sh
-    permissions: "0755"
-    content: |
-      #!/bin/bash
-      SHORT=$(echo "${hostname}" | cut -d'.' -f1)
-      {
-        echo "127.0.0.1   localhost"
-        echo "::1         localhost"
-        echo "${ip}  ${hostname} ${SHORT}"
-      } > /etc/hosts
+#────────────────────────────────────────────────────────
+# /etc/hosts dinámico
+#────────────────────────────────────────────────────────
+- path: /usr/local/bin/set-hosts.sh
+  permissions: "0755"
+  content: |
+    #!/bin/bash
+    {
+      echo "127.0.0.1   localhost"
+      echo "::1         localhost"
+      echo "${ip}  ${hostname} ${short_hostname}"
+    } > /etc/hosts
 
   #────────────────────────────────────────────────────────
   # sysctl necesario
