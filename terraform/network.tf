@@ -16,12 +16,12 @@ resource "libvirt_network" "okd_net" {
 
     # 👉 1) Forwarder principal (CoreDNS en INFRA)
     forwarders {
-      address = var.dns2   # normalmente 10.56.0.10
+      address = var.dns1   # normalmente 10.56.0.10
     }
 
     # 👉 2) Forwarder secundario (Google DNS como backup)
     forwarders {
-      address = var.dns1   # 8.8.8.8
+      address = var.dns2   # 8.8.8.8
     }
   }
 }
