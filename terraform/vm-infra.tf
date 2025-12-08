@@ -52,7 +52,6 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  # 🔥 CPU REAL DEL HOST (evita el panic)
   cpu {
     mode = "host-passthrough"
   }
@@ -74,6 +73,9 @@ resource "libvirt_domain" "infra" {
   network_interface {
     network_name   = libvirt_network.okd_net.name
     mac            = var.infra.mac
+    addresses      = [var.infra.ip]
+    hostname       = var.infra.hostname
+    wait_for_lease = true
   }
 
   # Consola serie

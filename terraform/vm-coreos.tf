@@ -71,9 +71,17 @@ resource "libvirt_domain" "bootstrap" {
     volume_id = libvirt_volume.bootstrap_disk.id
   }
 
+
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.bootstrap.mac
+    addresses    = [var.bootstrap.ip]
+    hostname     = var.bootstrap.hostname
+    wait_for_lease = true
+  }
+
+  cpu {
+    mode = "host-passthrough"
   }
 
   console {
@@ -113,9 +121,15 @@ resource "libvirt_domain" "master" {
     volume_id = libvirt_volume.master_disk.id
   }
 
+  cpu {
+    mode = "host-passthrough"
+  }
+
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.master.mac
+    addresses    = [var.master.ip]
+    wait_for_lease = true
   }
 
   console {
@@ -153,9 +167,15 @@ resource "libvirt_domain" "worker" {
     volume_id = libvirt_volume.worker_disk.id
   }
 
+  cpu {
+    mode = "host-passthrough"
+  }
+
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.worker.mac
+    addresses    = [var.worker.ip]
+    wait_for_lease = true
   }
 
   console {

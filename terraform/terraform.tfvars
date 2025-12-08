@@ -37,6 +37,7 @@ infra_ip = "10.56.0.10"
 bootstrap = {
   cpus   = 6
   memory = 17408
+  hostname = "bootstrap.okd.local"
   ip     = "10.56.0.11"
   mac    = "52:54:00:00:00:11"
 }
@@ -47,6 +48,7 @@ bootstrap = {
 master = {
   cpus   = 4
   memory = 13312
+  hostname = "master.okd.local"
   ip     = "10.56.0.12"
   mac    = "52:54:00:00:00:12"
 }
@@ -57,6 +59,7 @@ master = {
 worker = {
   cpus   = 2
   memory = 4096
+  hostname = "worker.okd.local"
   ip     = "10.56.0.13"
   mac    = "52:54:00:00:00:13"
 }
