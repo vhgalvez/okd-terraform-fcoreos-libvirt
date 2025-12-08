@@ -74,6 +74,7 @@ resource "libvirt_domain" "bootstrap" {
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.bootstrap.mac
+    addresses    = [var.bootstrap.ip]
   }
 
   console {
