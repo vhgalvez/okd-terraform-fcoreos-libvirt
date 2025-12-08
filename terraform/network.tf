@@ -1,4 +1,5 @@
 # terraform\network.tf
+# terraform\network.tf
 resource "libvirt_network" "okd_net" {
   name      = var.network_name
   mode      = "nat"
@@ -13,19 +14,13 @@ resource "libvirt_network" "okd_net" {
 
   dns {
     enabled = true
-    
-    # Esta es la sintaxis requerida por la versión 0.8.3.
-    forwarders = [
-      { addr = var.dns1 },
-      { addr = var.dns2 }
-    ]
-    
-    # OPCIONAL: Ejemplo de cómo agregar un registro estático para 'infra'
-    /*
-    host {
-      ip        = var.infra.ip
-      hostnames = ["infra", "infra.${var.cluster_name}.${var.cluster_domain}"]
+
+    forwarders {
+      addr = var.dns1
     }
-    */
+
+    forwarders {
+      addr = var.dns2
+    }
   }
 }
