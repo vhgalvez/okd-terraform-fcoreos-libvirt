@@ -57,9 +57,9 @@ resource "libvirt_domain" "infra" {
     mode = "host-passthrough"
   }
 
-# 
-arch    = "x86_64"
-machine = "pc"
+  # 
+  arch    = "x86_64"
+  machine = "pc"
 
 
   # Disco raíz AlmaLinux
@@ -72,10 +72,10 @@ machine = "pc"
 
   # Interfaz de red
   network_interface {
-    network_name = libvirt_network.okd_net.name
-    hostname     = var.infra.hostname
-    mac          = var.infra.mac
-    addresses    = [var.infra.ip]
+    network_name   = libvirt_network.okd_net.name
+    hostname       = var.infra.hostname
+    mac            = var.infra.mac
+    addresses      = [var.infra.ip]
     wait_for_lease = true
   }
 
