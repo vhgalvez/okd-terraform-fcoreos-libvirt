@@ -88,16 +88,17 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
+  # Reutilizamos los locals de vm-coreos.tf
   os  = local.domain_os
   cpu = local.cpu_conf
 
   devices = {
-
     ###########################################
     # DISKS
     ###########################################
     disks = [
       {
+        # Disco principal AlmaLinux (vda)
         source = {
           volume = {
             pool   = libvirt_volume.infra_disk.pool
@@ -110,6 +111,7 @@ resource "libvirt_domain" "infra" {
         }
       },
       {
+        # Cloud-init (vdb)
         source = {
           volume = {
             pool   = libvirt_volume.infra_cloudinit.pool
@@ -137,35 +139,13 @@ resource "libvirt_domain" "infra" {
     ]
 
     ###########################################
-    # CONSOLE
+    # CONSOLE (SERIAL)
     ###########################################
     consoles = [
       {
         type        = "pty"
         target_type = "serial"
         target_port = "0"
-      }
-    ]
-
-    ###########################################
-    # GRAPHICS — VNC (SINTAXIS REAL 0.9.1)
-    ###########################################
-    graphics = [
-      {
-        type     = "vnc"
-        listen   = "127.0.0.1"
-        autoport = "yes"
-      }
-    ]
-
-    ###########################################
-    # VIDEO — VGA (COMPATIBLE)
-    ###########################################
-    videos = [
-      {
-        model = {
-          type = "vga"
-        }
       }
     ]
   }
