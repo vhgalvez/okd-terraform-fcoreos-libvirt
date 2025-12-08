@@ -1,15 +1,14 @@
 # terraform/outputs.tf
+output "libvirt_pool_path" {
+  value = libvirt_pool.okd.target[0].path
+}
 
-#############################################
-# MAPA COMPLETO DE IPs
-#############################################
-output "vm_ips" {
-  value = {
-    infra     = var.infra.ip
-    bootstrap = var.bootstrap.ip
-    master    = var.master.ip
-    worker    = var.worker.ip
-  }
+output "network_name" {
+  value = var.network_name
+}
+
+output "network_cidr" {
+  value = var.network_cidr
 }
 
 output "infra_ip" {
@@ -28,20 +27,11 @@ output "worker_ip" {
   value = var.worker.ip
 }
 
-#############################################
-# RED
-#############################################
-output "network_name" {
-  value = var.network_name
-}
-
-output "network_cidr" {
-  value = var.network_cidr
-}
-
-#############################################
-# POOL PATH (VERSIÓN ESTABLE 0.8.3)
-#############################################
-output "libvirt_pool_path" {
-  value = libvirt_pool.okd.path
+output "vm_ips" {
+  value = {
+    infra     = var.infra.ip
+    bootstrap = var.bootstrap.ip
+    master    = var.master.ip
+    worker    = var.worker.ip
+  }
 }

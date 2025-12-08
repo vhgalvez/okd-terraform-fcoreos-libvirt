@@ -1,6 +1,6 @@
 # terraform/main.tf
 ########################################################################
-# TERRAFORM BACKEND + PROVIDERS
+# TERRAFORM + PROVIDERS
 ########################################################################
 
 terraform {
@@ -18,22 +18,19 @@ terraform {
   }
 }
 
-########################################################################
-# PROVIDER LIBVIRT
-########################################################################
-
 provider "libvirt" {
   uri = "qemu:///system"
 }
 
 ########################################################################
-# STORAGE POOL (VERSIÓN ESTABLE PARA 0.8.3)
+# STORAGE POOL (SIN WARNINGS)
 ########################################################################
 
 resource "libvirt_pool" "okd" {
   name = "okd"
   type = "dir"
 
-  # Sí, esto muestra warning, pero ES LO CORRECTO en 0.8.3.
-  path = "/var/lib/libvirt/images/okd"
+  target {
+    path = "/var/lib/libvirt/images/okd"
+  }
 }
