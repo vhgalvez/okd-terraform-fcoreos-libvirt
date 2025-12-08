@@ -79,9 +79,6 @@ resource "libvirt_domain" "infra" {
     boot_devices = [{ dev = "hd" }]
   }
 
-  # Conecta el disco de cloud-init
-  cloudinit = libvirt_cloudinit_disk.infra_init.id
-
   devices = {
     disks = [
       {
@@ -95,6 +92,17 @@ resource "libvirt_domain" "infra" {
           dev = "vda"
           bus = "virtio"
         }
+      },
+      {
+        # Attach the cloud-init disk as a second disk
+        source = {
+          file = libvirt_cloudinit_disk.infra_init.id
+        }
+        target = {
+          dev = "vdb"
+          bus = "virtio"
+        }
+        readonly = true
       }
     ]
 
