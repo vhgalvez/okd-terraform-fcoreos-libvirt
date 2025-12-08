@@ -21,7 +21,7 @@ resource "libvirt_volume" "infra_disk" {
 }
 
 ###############################################
-# CLOUD-INIT TEMPLATE
+# CLOUD-INIT TEMPLATE (AlmaLinux)
 ###############################################
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
@@ -46,7 +46,7 @@ data "template_file" "infra_cloud_init" {
 }
 
 ###############################################
-# CLOUD-INIT DISK (sin pool para 0.9.1)
+# CLOUD-INIT DISK (libvirt_cloudinit_disk)
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit"
@@ -58,9 +58,9 @@ resource "libvirt_cloudinit_disk" "infra_init" {
   })
 }
 
-# Volumen RAW que contiene el ISO de cloud-init
+# Volumen RAW que contiene el cloud-init renderizado
 resource "libvirt_volume" "infra_cloudinit" {
-  name = "infra-cloudinit.iso"
+  name = "infra-cloudinit.raw"
   pool = libvirt_pool.okd.name
 
   create = {
@@ -77,7 +77,7 @@ resource "libvirt_volume" "infra_cloudinit" {
 }
 
 ###############################################
-# VM INFRA (HAProxy + CoreDNS)
+# VM INFRA (DNS + NTP + HAProxy + CoreDNS)
 ###############################################
 resource "libvirt_domain" "infra" {
   name      = "okd-infra"
@@ -86,18 +86,14 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  cpu = {
-    mode = "host-passthrough"
-  }
-
-  os = {
-    type         = "hvm"
-    type_arch    = "x86_64"
-    type_machine = "q35"
-    boot_devices = [{ dev = "hd" }]
-  }
+  # Reutilizamos los locals que ya definiste en vm-coreos.tf
+  os  = local.domain_os
+  cpu = local.cpu_conf
 
   devices = {
+    ###########################################
+    # DISKS
+    ###########################################
     disks = [
       {
         # Disco principal AlmaLinux (vda)
@@ -113,7 +109,7 @@ resource "libvirt_domain" "infra" {
         }
       },
       {
-        # Segundo disco: cloud-init (vdb)
+        # Cloud-init (vdb)
         source = {
           volume = {
             pool   = libvirt_volume.infra_cloudinit.pool
@@ -127,6 +123,9 @@ resource "libvirt_domain" "infra" {
       }
     ]
 
+    ###########################################
+    # NETWORK INTERFACE
+    ###########################################
     interfaces = [
       {
         model = { type = "virtio" }
@@ -137,6 +136,9 @@ resource "libvirt_domain" "infra" {
       }
     ]
 
+    ###########################################
+    # CONSOLE
+    ###########################################
     consoles = [
       {
         type        = "pty"
@@ -144,5 +146,34 @@ resource "libvirt_domain" "infra" {
         target_port = "0"
       }
     ]
+
+    ###########################################
+    # VNC GRAPHICS (LOCAL)
+    ###########################################
+    graphics = [
+      {
+        type = "vnc"
+        vnc = {
+          autoport = "yes"
+          listen = {
+            type    = "address"
+            address = "127.0.0.1"
+          }
+        }
+      }
+    ]
+
+    ###########################################
+    # VIDEO (RECOMENDADO CON GRAPHICS)
+    ###########################################
+    videos = [
+      {
+        model = {
+          type = "qxl"
+        }
+      }
+    ]
   }
+
+  running = true
 }
