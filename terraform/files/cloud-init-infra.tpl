@@ -190,19 +190,7 @@ write_files:
         balance roundrobin
         server worker80  10.56.0.13:80  check
         server worker443 10.56.0.13:443 check
-  #────────────────────────────────────────────────────────
-  # Chrony — NTP
-  #────────────────────────────────────────────────────────
-  - path: /etc/chrony.conf
-    permissions: "0644"
-    content: |
-      server 10.56.0.11 iburst prefer
-      allow 10.56.0.0/24
-      driftfile /var/lib/chrony/drift
-      makestep 1.0 3
-      server 0.pool.ntp.org iburst
-      server 1.pool.ntp.org iburst
-      server 2.pool.ntp.org iburst
+
 
 ###########################################################
 # RUNCMD
@@ -222,27 +210,5 @@ runcmd:
   - systemctl daemon-reload
   - systemctl enable chronyd firewalld coredns haproxy
   - systemctl restart chronyd firewalld coredns haproxy
-
-  #────────────────────────────────────────────────────────
-  # 🔥 SELinux FIX PARA HAProxy (puertos <1024 + bind)
-  #────────────────────────────────────────────────────────
-  - setsebool -P haproxy_connect_any 1
-  - setsebool -P httpd_can_network_connect 1
-  - semanage port -a -t http_port_t -p tcp 6443 || true
-  - semanage port -a -t http_port_t -p tcp 22623 || true
-
-  # Servicios
-  - systemctl daemon-reload
-  - systemctl enable NetworkManager firewalld chronyd coredns haproxy
-  - systemctl restart NetworkManager firewalld chronyd coredns haproxy
-
-  # Firewall OKD
-  - firewall-cmd --permanent --add-port=53/tcp
-  - firewall-cmd --permanent --add-port=53/udp
-  - firewall-cmd --permanent --add-port=80/tcp
-  - firewall-cmd --permanent --add-port=443/tcp
-  - firewall-cmd --permanent --add-port=6443/tcp
-  - firewall-cmd --permanent --add-port=22623/tcp
-  - firewall-cmd --reload
 
 timezone: ${timezone}
