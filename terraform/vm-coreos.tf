@@ -11,8 +11,9 @@ resource "libvirt_volume" "coreos_base" {
 }
 
 ###############################################
-# OVERLAYS PARA LOS NODOS
+# OVERLAYS
 ###############################################
+
 resource "libvirt_volume" "bootstrap_disk" {
   name           = "bootstrap.qcow2"
   pool           = libvirt_pool.okd.name
@@ -35,8 +36,9 @@ resource "libvirt_volume" "worker_disk" {
 }
 
 ###############################################
-# IGNITION
+# IGNITION FILES
 ###############################################
+
 resource "libvirt_ignition" "bootstrap" {
   name    = "bootstrap.ign"
   pool    = libvirt_pool.okd.name
@@ -56,7 +58,7 @@ resource "libvirt_ignition" "worker" {
 }
 
 ###############################################
-# DOMINIOS FCOS
+# BOOTSTRAP NODE
 ###############################################
 
 resource "libvirt_domain" "bootstrap" {
@@ -72,8 +74,6 @@ resource "libvirt_domain" "bootstrap" {
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.bootstrap.mac
-    # Eliminado para acelerar terraform apply
-    # wait_for_lease = true
   }
 
   console {
@@ -82,9 +82,26 @@ resource "libvirt_domain" "bootstrap" {
     target_port = 0
   }
 
+  # ✔ VNC (no spice)
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  # ✔ Video VGA
+  video {
+    type = "vga"
+  }
+
   coreos_ignition = libvirt_ignition.bootstrap.id
   fw_cfg_name     = "opt/com.coreos/config"
 }
+
+###############################################
+# MASTER NODE
+###############################################
 
 resource "libvirt_domain" "master" {
   name      = "okd-master"
@@ -92,12 +109,13 @@ resource "libvirt_domain" "master" {
   memory    = var.master.memory
   autostart = true
 
-  disk { volume_id = libvirt_volume.master_disk.id }
+  disk {
+    volume_id = libvirt_volume.master_disk.id
+  }
 
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.master.mac
-    # wait_for_lease = true
   }
 
   console {
@@ -106,9 +124,24 @@ resource "libvirt_domain" "master" {
     target_port = 0
   }
 
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  video {
+    type = "vga"
+  }
+
   coreos_ignition = libvirt_ignition.master.id
   fw_cfg_name     = "opt/com.coreos/config"
 }
+
+###############################################
+# WORKER NODE
+###############################################
 
 resource "libvirt_domain" "worker" {
   name      = "okd-worker"
@@ -116,18 +149,30 @@ resource "libvirt_domain" "worker" {
   memory    = var.worker.memory
   autostart = true
 
-  disk { volume_id = libvirt_volume.worker_disk.id }
+  disk {
+    volume_id = libvirt_volume.worker_disk.id
+  }
 
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.worker.mac
-    # wait_for_lease = true
   }
 
   console {
     type        = "pty"
     target_type = "serial"
     target_port = 0
+  }
+
+  graphics {
+    type           = "vnc"
+    listen_type    = "address"
+    listen_address = "127.0.0.1"
+    autoport       = true
+  }
+
+  video {
+    type = "vga"
   }
 
   coreos_ignition = libvirt_ignition.worker.id
