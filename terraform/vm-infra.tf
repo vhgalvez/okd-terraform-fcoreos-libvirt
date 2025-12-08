@@ -10,7 +10,7 @@ resource "libvirt_volume" "infra_disk" {
 }
 
 ###############################################
-# CLOUD-INIT TEMPLATE (AlmaLinux)
+# CLOUD-INIT TEMPLATE
 ###############################################
 data "template_file" "infra_cloud_init" {
   template = file("${path.module}/files/cloud-init-infra.tpl")
@@ -18,23 +18,20 @@ data "template_file" "infra_cloud_init" {
   vars = {
     hostname       = var.infra.hostname
     short_hostname = split(".", var.infra.hostname)[0]
-
-    ip      = var.infra.ip
-    gateway = var.gateway
-    dns1    = var.dns1
-    dns2    = var.dns2
-
+    ip             = var.infra.ip
+    gateway        = var.gateway
+    dns1           = var.dns1
+    dns2           = var.dns2
     cluster_domain = var.cluster_domain
     cluster_name   = var.cluster_name
     cluster_fqdn   = "${var.cluster_name}.${var.cluster_domain}"
-
-    ssh_keys = join("\n", var.ssh_keys)
-    timezone = var.timezone
+    ssh_keys       = join("\n", var.ssh_keys)
+    timezone       = var.timezone
   }
 }
 
 ###############################################
-# CLOUD-INIT DISK (libvirt_cloudinit_disk)
+# CLOUD-INIT DISK
 ###############################################
 resource "libvirt_cloudinit_disk" "infra_init" {
   name      = "infra-cloudinit.iso"
@@ -47,7 +44,7 @@ resource "libvirt_cloudinit_disk" "infra_init" {
 }
 
 ###############################################
-# VM INFRA (DNS + NTP + HAProxy + CoreDNS)
+# VM INFRA
 ###############################################
 resource "libvirt_domain" "infra" {
   name      = "okd-infra"
@@ -55,47 +52,25 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  # 🔧 MUY IMPORTANTE: evitar qemu64 y usar CPU del host
-  cpu {
-    mode = "host-model"
-  }
-
-  ###########################################
-  # DISCO PRINCIPAL
-  ###########################################
   disk {
     volume_id = libvirt_volume.infra_disk.id
   }
 
-  ###########################################
-  # CLOUD-INIT
-  ###########################################
   cloudinit = libvirt_cloudinit_disk.infra_init.id
 
-  ###########################################
-  # NETWORK INTERFACE
-  ###########################################
   network_interface {
     network_name = libvirt_network.okd_net.name
     mac          = var.infra.mac
-
-    # Usas IP estática via cloud-init, así que
-    # mejor no esperes lease DHCP:
-    wait_for_lease = false
+    # Eliminado para acelerar terraform apply
+    # wait_for_lease = true
   }
 
-  ###########################################
-  # CONSOLA SERIE
-  ###########################################
   console {
     type        = "pty"
     target_type = "serial"
-    target_port = "0"
+    target_port = 0
   }
 
-  ###########################################
-  # GRAPHICS (VNC COMPATIBLE)
-  ###########################################
   graphics {
     type           = "vnc"
     listen_type    = "address"
@@ -103,9 +78,6 @@ resource "libvirt_domain" "infra" {
     autoport       = true
   }
 
-  ###########################################
-  # VIDEO
-  ###########################################
   video {
     type = "vga"
   }

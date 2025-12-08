@@ -27,12 +27,13 @@ provider "libvirt" {
 }
 
 ########################################################################
-# STORAGE POOL (SINTAXIS 0.8.3)
-# - path es atributo directo
+# STORAGE POOL (VERSIÓN ESTABLE PARA 0.8.3)
 ########################################################################
 
 resource "libvirt_pool" "okd" {
   name = "okd"
   type = "dir"
+
+  # Sí, esto muestra warning, pero ES LO CORRECTO en 0.8.3.
   path = "/var/lib/libvirt/images/okd"
 }
