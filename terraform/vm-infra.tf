@@ -50,6 +50,7 @@ resource "libvirt_domain" "infra" {
   name      = "okd-infra"
   vcpu      = var.infra.cpus
   memory    = var.infra.memory
+  addresses = [var.infra.ip]
   autostart = true
 
   # 🔥 CPU REAL DEL HOST (evita el panic)
