@@ -129,6 +129,7 @@ resource "libvirt_domain" "master" {
     network_name = libvirt_network.okd_net.name
     mac          = var.master.mac
     addresses    = [var.master.ip]
+    hostname     = var.master.hostname
     wait_for_lease = true
   }
 
@@ -175,6 +176,7 @@ resource "libvirt_domain" "worker" {
     network_name = libvirt_network.okd_net.name
     mac          = var.worker.mac
     addresses    = [var.worker.ip]
+    hostname     = var.worker.hostname
     wait_for_lease = true
   }
 
