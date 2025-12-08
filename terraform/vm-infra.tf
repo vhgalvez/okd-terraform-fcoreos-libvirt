@@ -73,10 +73,7 @@ resource "libvirt_domain" "infra" {
   # Interfaz de red
   network_interface {
     network_name   = libvirt_network.okd_net.name
-    hostname       = var.infra.hostname
     mac            = var.infra.mac
-    addresses      = [var.infra.ip]
-    wait_for_lease = true
   }
 
   # Consola serie

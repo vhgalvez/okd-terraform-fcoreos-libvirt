@@ -455,7 +455,7 @@ okd-terraform-fcoreos-libvirt/
 
 EN BOOTSTRAP:
 
-journalctl -b -f -u bootkube.service
+sudo journalctl -b -f -u bootkube.service
 
 
 
@@ -468,3 +468,12 @@ EOF'
 
 sudo virsh net-list --all
 sudo virsh net-dhcp-leases okd-net
+
+
+
+ network_interface {
+    network_name = libvirt_network.okd_net.name
+    mac          = var.bootstrap.mac
+    addresses    = [var.bootstrap.ip]
+    wait_for_lease = true
+  }
