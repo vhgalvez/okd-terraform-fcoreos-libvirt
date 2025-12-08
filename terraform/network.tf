@@ -1,4 +1,5 @@
 # terraform\network.tf
+# terraform\network.tf
 resource "libvirt_network" "okd_net" {
   name      = var.network_name
   mode      = "nat"
@@ -13,6 +14,17 @@ resource "libvirt_network" "okd_net" {
 
   dns {
     enabled = true
-    forwarders = [var.dns1, var.dns2]
+    
+    # 1. Definición del primer forwarder (var.dns1)
+    forwarder {
+      addr = var.dns1
+    }
+    
+    # 2. Definición del segundo forwarder (var.dns2)
+    forwarder {
+      addr = var.dns2
+    }
+    
+    # Puedes añadir aquí también bloques 'host' si necesitas registros DNS estáticos.
   }
 }
