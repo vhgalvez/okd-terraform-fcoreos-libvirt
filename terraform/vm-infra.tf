@@ -86,7 +86,7 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  # Reutilizamos los locals que ya definiste en vm-coreos.tf
+  # Reutilizamos los locals de vm-coreos.tf
   os  = local.domain_os
   cpu = local.cpu_conf
 
@@ -148,17 +148,24 @@ resource "libvirt_domain" "infra" {
     ]
 
     ###########################################
-    # VNC GRAPHICS (LOCAL)
+    # GRAPHICS: VNC + SPICE (HÍBRIDO)
     ###########################################
     graphics = [
+      # VNC local
       {
         type = "vnc"
         vnc = {
+          listen   = "127.0.0.1"
           autoport = "yes"
-          listen = {
-            type    = "address"
-            address = "127.0.0.1"
-          }
+        }
+      },
+
+      # SPICE local
+      {
+        type = "spice"
+        spice = {
+          listen   = "127.0.0.1"
+          autoport = "yes"
         }
       }
     ]
