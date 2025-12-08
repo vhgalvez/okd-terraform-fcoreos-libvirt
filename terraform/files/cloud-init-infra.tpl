@@ -3,6 +3,12 @@ hostname: ${hostname}
 manage_etc_hosts: false
 timezone: ${timezone}
 
+# SINCRONIZAR HORA CON EL HOST (NTP)
+ntp:
+  enabled: true
+  servers:
+    - 10.56.0.1   # dirección del host KVM/libvirt
+
 ssh_pwauth: false
 disable_root: false
 
@@ -61,7 +67,7 @@ write_files:
       {
         echo "127.0.0.1   localhost"
         echo "::1         localhost"
-        echo "${ip}  ${hostname} ${"$"}{SHORT}"
+        echo "${ip}  ${hostname} ${SHORT}"
       } > /etc/hosts
 
   #────────────────────────────────────────────────────────
@@ -140,7 +146,7 @@ write_files:
       WantedBy=multi-user.target
 
   #────────────────────────────────────────────────────────
-  # HAProxy — configuración oficial OKD
+  # HAProxy OKD
   #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
@@ -209,6 +215,11 @@ runcmd:
 
   # Install base packages
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
+
+  # Asegurar NTP sincronizando con el host
+  - systemctl enable --now chronyd
+  - sed -i 's/^pool.*/server 10.56.0.1 iburst/' /etc/chrony.conf
+  - systemctl restart chronyd
 
   # sysctl
   - sysctl --system
