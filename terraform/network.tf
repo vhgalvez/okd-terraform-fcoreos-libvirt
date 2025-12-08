@@ -8,7 +8,7 @@ resource "libvirt_network" "okd_net" {
   addresses = [var.network_cidr]
 
   dhcp {
-    enabled = false
+    enabled = true
   }
 
   dns {
