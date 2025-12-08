@@ -74,8 +74,6 @@ resource "libvirt_domain" "infra" {
     network_name   = libvirt_network.okd_net.name
     mac            = var.infra.mac
     addresses      = [var.infra.ip]
-    hostname       = var.infra.hostname
-    wait_for_lease = true
   }
 
   # Consola serie
