@@ -3,7 +3,6 @@ hostname: ${hostname}
 manage_etc_hosts: false
 timezone: ${timezone}
 
-# NTP sincronizar hora desde el host físico
 ntp:
   enabled: true
   servers:
@@ -19,7 +18,6 @@ users:
     ssh_authorized_keys:
       - ${ssh_keys}
 
-  # ✔ Usuario core consistente con FCOS y OKD
   - name: core
     gecos: "Core User"
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
@@ -35,9 +33,6 @@ users:
 
 write_files:
 
-  #────────────────────────────────────────────────────────
-  # NetworkManager — IP fija + DNS OKD
-  #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
     content: |
@@ -57,22 +52,16 @@ write_files:
       [ipv6]
       method=ignore
 
-  #────────────────────────────────────────────────────────
-  # /etc/hosts dinámico
-  #────────────────────────────────────────────────────────
   - path: /usr/local/bin/set-hosts.sh
     permissions: "0755"
     content: |
       #!/bin/bash
       {
-        echo "127.0.0.1   localhost"
-        echo "::1         localhost"
-        echo "${ip}  ${hostname} ${short_hostname}"
+        echo "127.0.0.1 localhost"
+        echo "::1 localhost"
+        echo "${ip} ${hostname} ${short_hostname}"
       } > /etc/hosts
 
-  #────────────────────────────────────────────────────────
-  # sysctl necesario
-  #────────────────────────────────────────────────────────
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
     content: |
@@ -80,31 +69,22 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
       net.ipv4.conf.all.forwarding = 1
 
-  #────────────────────────────────────────────────────────
-  # Desactivar gestión DNS de NetworkManager
-  #────────────────────────────────────────────────────────
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
     content: |
       [main]
       dns=none
 
-  #────────────────────────────────────────────────────────
-  # CoreDNS — Corefile
-  #────────────────────────────────────────────────────────
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
-      ${cluster_name}.${cluster_domain} {
+      ${cluster_name}.${cluster_domain}. {
         file /etc/coredns/db.okd
       }
       . {
         forward . 8.8.8.8 1.1.1.1
       }
 
-  #────────────────────────────────────────────────────────
-  # CoreDNS — zona DNS OKD (db.okd)
-  #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
@@ -118,24 +98,15 @@ write_files:
       @           IN NS dns.${cluster_name}.${cluster_domain}.
       dns         IN A ${ip}
 
-      # ✔ Registros API OKD
       api         IN A ${ip}
       api-int     IN A ${ip}
 
-      # ✔ Nodos del clúster
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
       worker      IN A 10.56.0.13
 
-      # ✔ apps
       *.apps      IN A ${ip}
 
-      # ❌ ELIMINADO registro conflictivo:
-      # ${cluster_name} IN A ${ip}
-
-  #────────────────────────────────────────────────────────
-  # CoreDNS — systemd unit
-  #────────────────────────────────────────────────────────
   - path: /etc/systemd/system/coredns.service
     permissions: "0644"
     content: |
@@ -152,9 +123,6 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-  #────────────────────────────────────────────────────────
-  # HAProxy OKD
-  #────────────────────────────────────────────────────────
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
     content: |
@@ -204,54 +172,42 @@ write_files:
 ###########################################################
 
 runcmd:
-
-  # Swap
   - fallocate -l 4G /swapfile
   - chmod 600 /swapfile
   - mkswap /swapfile
   - swapon /swapfile
   - echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
-  # Actualizar /etc/hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Reload NetworkManager
   - nmcli connection reload
   - nmcli connection down eth0 || true
   - nmcli connection up eth0
 
-  # Instalar paquetes base
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
-  # Chrony — configurar servidor NTP
   - systemctl enable --now chronyd
   - sed -i 's/^pool.*/server 10.56.0.1 iburst/' /etc/chrony.conf
   - echo "allow 10.56.0.0/24" >> /etc/chrony.conf
   - systemctl restart chronyd
 
-  # sysctl
   - sysctl --system
 
-  # resolv.conf final
   - rm -f /etc/resolv.conf
   - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
 
-  # Instalar CoreDNS
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - chmod +x /usr/local/bin/coredns
 
-  # SELinux — permitir HAProxy
   - setsebool -P haproxy_connect_any 1
   - setsebool -P daemons_enable_cluster_mode 1
 
-  # Habilitar servicios
   - systemctl daemon-reload
   - systemctl enable firewalld chronyd coredns haproxy
   - systemctl restart firewalld chronyd coredns haproxy
 
-  # Firewall
   - firewall-cmd --permanent --add-port=53/tcp
   - firewall-cmd --permanent --add-port=53/udp
   - firewall-cmd --permanent --add-port=6443/tcp
