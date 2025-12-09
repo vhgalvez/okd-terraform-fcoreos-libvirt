@@ -3,7 +3,7 @@ hostname: ${hostname}
 manage_etc_hosts: false
 timezone: ${timezone}
 
-# NTP sincronizar hora desde el host físico (10.56.0.1)
+# NTP sincronizar hora desde el host físico
 ntp:
   enabled: true
   servers:
@@ -19,6 +19,7 @@ users:
     ssh_authorized_keys:
       - ${ssh_keys}
 
+  # ✔ Usuario core consistente con el resto de nodos
   - name: core
     gecos: "Core User"
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
@@ -50,7 +51,7 @@ write_files:
       method=manual
       address1=${ip}/24,${gateway}
       dns=${dns1};${dns2}
-      dns-search=${cluster_domain}
+      dns-search=${cluster_name}.${cluster_domain}
       may-fail=false
 
       [ipv6]
@@ -77,6 +78,7 @@ write_files:
     content: |
       net.ipv4.ip_forward = 1
       net.ipv4.ip_nonlocal_bind = 1
+      net.ipv4.conf.all.forwarding = 1
 
   #────────────────────────────────────────────────────────
   # Desactivar gestión DNS de NetworkManager
@@ -116,14 +118,20 @@ write_files:
       @           IN NS dns.${cluster_name}.${cluster_domain}.
       dns         IN A ${ip}
 
+      # ✔ Registros API OKD
       api         IN A ${ip}
       api-int     IN A ${ip}
 
+      # ✔ Nodos
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
       worker      IN A 10.56.0.13
 
+      # ✔ apps
       *.apps      IN A ${ip}
+
+      # ✔ dominio base (IMPORTANTE)
+      ${cluster_name} IN A ${ip}
 
   #────────────────────────────────────────────────────────
   # CoreDNS — systemd unit
@@ -226,7 +234,7 @@ runcmd:
 
   # resolv.conf final
   - rm -f /etc/resolv.conf
-  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_domain}\n" > /etc/resolv.conf
+  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
 
   # Instalar CoreDNS binary
   - mkdir -p /etc/coredns
@@ -236,6 +244,7 @@ runcmd:
 
   # SELinux — permitir HAProxy
   - setsebool -P haproxy_connect_any 1
+  - setsebool -P daemons_enable_cluster_mode 1
 
   # Habilitar servicios
   - systemctl daemon-reload
@@ -249,4 +258,5 @@ runcmd:
   - firewall-cmd --permanent --add-port=22623/tcp
   - firewall-cmd --permanent --add-port=80/tcp
   - firewall-cmd --permanent --add-port=443/tcp
+  - firewall-cmd --permanent --add-port=9000/tcp
   - firewall-cmd --reload
