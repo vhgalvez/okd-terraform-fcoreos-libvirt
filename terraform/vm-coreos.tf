@@ -72,6 +72,27 @@ resource "libvirt_domain" "bootstrap" {
   }
 
 
+# time synchronization
+clock {
+  offset = "utc"
+
+  timer {
+    name = "rtc"
+    tickpolicy = "catchup"
+  }
+
+  timer {
+    name = "pit"
+    tickpolicy = "delay"
+  }
+
+  timer {
+    name = "hpet"
+    present = false
+  }
+}
+
+
   network_interface {
     network_name   = libvirt_network.okd_net.name
     mac            = var.bootstrap.mac
