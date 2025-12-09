@@ -485,13 +485,3 @@ sudo git reset --hard HEAD
 sudo git pull
 
 
-
-clock {
-  offset = "utc"
-  adjustment = "reset"
-  timer {
-    name = "rtc"
-    tickpolicy = "catchup"
-    track = "guest"
-  }
-}
