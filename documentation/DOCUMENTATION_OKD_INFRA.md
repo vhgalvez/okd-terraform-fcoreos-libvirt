@@ -115,20 +115,20 @@ worker = {
 dns1           = "8.8.8.8"
 dns2           = "10.56.0.10"                  # ← okd-infra
 gateway        = "10.56.0.1"
-cluster_domain = "cefaslocalserver.com"
+cluster_domain = "okd.local"
 timezone       = "UTC"
 ```
 
 ### 2.2. Dominio lógico del clúster
 
 - **Dominio global del clúster:**  
-  `okd-lab.${cluster_domain}` → `okd-lab.cefaslocalserver.com`
+  `okd-lab.${cluster_domain}` → `okd-lab.okd.local`
 
 - **API externas de OKD/Openshift:**  
-  - `api.okd-lab.cefaslocalserver.com`
-  - `api-int.okd-lab.cefaslocalserver.com`
+  - `api.okd-lab.okd.local`
+  - `api-int.okd-lab.okd.local`
 - **Wildcard de aplicaciones:**  
-  - `*.apps.okd-lab.cefaslocalserver.com`  
+  - `*.apps.okd-lab.okd.local`  
 
 Todos estos nombres se resuelven a IPs internas (10.56.0.x) mediante **CoreDNS** corriendo en `okd-infra`.
 
@@ -185,7 +185,7 @@ worker      IN A 10.56.0.13
 ### 3.3. Esquema ASCII de resolución DNS
 
 ```text
-   Consulta: api.okd-lab.cefaslocalserver.com
+   Consulta: api.okd-lab.okd.local
 
    Nodo OKD (bootstrap/master/worker)
             |
@@ -196,7 +196,7 @@ worker      IN A 10.56.0.13
    +--------------------+
             |
             v
-  api.okd-lab.cefaslocalserver.com  ->  10.56.0.10 (okd-infra)
+  api.okd-lab.okd.local  ->  10.56.0.10 (okd-infra)
 ```
 
 Luego el tráfico TCP llega a HAProxy en `okd-infra` (ver sección 4).
@@ -267,7 +267,7 @@ backend worker_ingress
 kubectl / installer / openshift-install
        |
        v
-api.okd-lab.cefaslocalserver.com:6443
+api.okd-lab.okd.local:6443
        |
  DNS → 10.56.0.10 (okd-infra)
        |
@@ -289,7 +289,7 @@ bootstrap    master
 Nodos CoreOS (bootstrap/master/worker)
        |
        v
-api-int.okd-lab.cefaslocalserver.com:22623
+api-int.okd-lab.okd.local:22623
        |
  DNS → 10.56.0.10
        |
@@ -310,7 +310,7 @@ api-int.okd-lab.cefaslocalserver.com:22623
 ```text
 Browser usuario (externo/interno)
           |
-   app1.apps.okd-lab.cefaslocalserver.com
+   app1.apps.okd-lab.okd.local
           |
           v
    DNS → 10.56.0.10
@@ -526,6 +526,7 @@ dig @10.56.0.10 apps.okd.okd.local
 
 
 
+cat /etc/resolv.conf
 
 
 +-----------------------------------------------------------------------------------------------------------------------------------+
@@ -559,7 +560,7 @@ dig @10.56.0.10 apps.okd.okd.local
 
 ### 1. DNS Centralizado y Autoridad (CoreDNS)
 
-La clave es que `okd-infra` (10.56.0.10) es el servidor **DNS principal** para la zona `okd-lab.cefaslocalserver.com`.
+La clave es que `okd-infra` (10.56.0.10) es el servidor **DNS principal** para la zona `okd-lab.okd.local`.
 
 * **API / Ingress Wildcard:** Los registros críticos como `api`, `api-int`, y `*.apps` son resueltos directamente a la IP del propio `okd-infra` (`10.56.0.10`).
 * **Encaminamiento al LB:** Esto asegura que la solicitud TCP/HTTP(S) posterior sea dirigida al **HAProxy** de `okd-infra`, delegando el balanceo de carga en el backend.
