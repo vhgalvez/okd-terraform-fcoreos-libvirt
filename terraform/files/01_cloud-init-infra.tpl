@@ -45,7 +45,7 @@ write_files:
       [ipv4]
       method=manual
       address1=${ip}/24,${gateway}
-      # IMPORTANTE: que NM no toque resolv.conf; lo gestionamos nosotros
+      dns=${dns1};${dns2}
       dns-search=${cluster_name}.${cluster_domain}
       may-fail=false
 
@@ -193,9 +193,8 @@ runcmd:
 
   - sysctl --system
 
-  # 👉 INFRA USA SU PROPIO COREDNS
   - rm -f /etc/resolv.conf
-  - printf "nameserver 127.0.0.1\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
+  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
 
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
