@@ -19,46 +19,47 @@ ssh_keys = [
 ]
 
 ###############################################
-# SERVIDOR INFRA (DNS + NTP)
+# SERVIDOR INFRA (DNS + NTP + COREDNS + LB)
 ###############################################
 infra = {
   cpus     = 2
-  memory   = 3072
+  memory   = 3072 # 3 GB
   ip       = "10.56.0.10"
   hostname = "infra.okd.local"
   mac      = "52:54:00:00:00:10"
 }
 
-infra_ip = "10.56.0.10"
 
 ###############################################
-# BOOTSTRAP NODE
+# BOOTSTRAP (Control Plane temporal)
 ###############################################
 bootstrap = {
   cpus     = 6
-  memory   = 17408
+  memory   = 20480 # 20 GB
   hostname = "bootstrap.okd.local"
   ip       = "10.56.0.11"
   mac      = "52:54:00:00:00:11"
 }
 
+
 ###############################################
-# MASTER NODE
+# MASTER (Control Plane real)
 ###############################################
 master = {
   cpus     = 4
-  memory   = 13312
+  memory   = 8192 # 8 GB
   hostname = "master.okd.local"
   ip       = "10.56.0.12"
   mac      = "52:54:00:00:00:12"
 }
 
+
 ###############################################
-# WORKER NODE
+# WORKER (correr Pods / Apps / Tests)
 ###############################################
 worker = {
   cpus     = 2
-  memory   = 4096
+  memory   = 2048 # 2 GB
   hostname = "worker.okd.local"
   ip       = "10.56.0.13"
   mac      = "52:54:00:00:00:13"
