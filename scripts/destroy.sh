@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-
-# scripts/destroy.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,66 +16,71 @@ echo "=============================================="
 # 1. Destruir infraestructura Terraform
 # ---------------------------------------------------------
 if [[ -d "$TERRAFORM_DIR" ]]; then
-    echo "[1/5] Ejecutando terraform destroy..."
+    echo "[1/6] Ejecutando terraform destroy..."
     terraform -chdir="$TERRAFORM_DIR" destroy -auto-approve || true
 else
-    echo "⚠ Carpeta terraform/ no encontrada, saltando destroy."
+    echo "⚠ terraform/ no encontrado, saltando destroy."
 fi
 
 # ---------------------------------------------------------
-# 2. Limpiar carpeta generated/
+# 2. Eliminar carpeta generated completa
 # ---------------------------------------------------------
-echo "[2/5] Eliminando carpeta generated/ completa..."
+echo "[2/6] Eliminando carpeta generated/ COMPLETA..."
 
 if [[ -d "$GENERATED_DIR" ]]; then
-    rm -rf "${GENERATED_DIR:?}/"*
-    echo "✔ generated/ limpiada."
+    rm -rf "${GENERATED_DIR}"
+    echo "✔ generated/ eliminada por completo."
 else
-    echo "⚠ generated/ no existe, nada que limpiar."
+    echo "✔ generated/ no existe (correcto)."
 fi
 
 # ---------------------------------------------------------
-# 3. Eliminar COPIAS obsoletas de install-config
+# 3. Eliminar archivos openshift-install en el proyecto
 # ---------------------------------------------------------
-echo "[3/5] Eliminando copia temporal install-config.yaml dentro de generated/..."
+echo "[3/6] Eliminando archivos openshift-install..."
 
-if [[ -f "${GENERATED_DIR}/install-config.yaml" ]]; then
-    rm -f "${GENERATED_DIR}/install-config.yaml"
-    echo "✔ Copia eliminada: generated/install-config.yaml"
-else
-    echo "✔ No había copia temporal de install-config.yaml (correcto)."
-fi
+rm -f "${PROJECT_ROOT}/.openshift_install.log" 2>/dev/null || true
+rm -f "${PROJECT_ROOT}/.openshift_install_state.json" 2>/dev/null || true
+rm -f "${PROJECT_ROOT}/.openshift_install.lock" 2>/dev/null || true
 
-# Además: borrar cualquier .ign viejo que quede por el proyecto
-echo "[3b/5] Eliminando archivos .ign obsoletos..."
+# Eliminar variantes (*.log, *.json)
+rm -f "${PROJECT_ROOT}"/*.log 2>/dev/null || true
+rm -f "${PROJECT_ROOT}"/*.json 2>/dev/null || true
+
+echo "✔ Archivos openshift-install y logs/json eliminados."
+
+# ---------------------------------------------------------
+# 4. Eliminar archivos .ign en todo el proyecto
+# ---------------------------------------------------------
+echo "[4/6] Eliminando ignitions viejos (.ign)..."
+
 find "$PROJECT_ROOT" -type f -name "*.ign" -exec rm -f {} \; 2>/dev/null || true
-echo "✔ Ignitions viejas eliminadas."
+
+echo "✔ Ignitions viejos eliminados."
 
 # ---------------------------------------------------------
-# 4. Eliminar symlink 'auth' si existe
+# 5. Eliminar symlink auth
 # ---------------------------------------------------------
-echo "[4/5] Eliminando symlink auth si existe..."
+echo "[5/6] Eliminando symlink auth si existe..."
 
 if [[ -L "${PROJECT_ROOT}/auth" ]]; then
     rm -f "${PROJECT_ROOT}/auth"
-    echo "✔ Symlink auth eliminado."
+    echo "✔ symlink auth eliminado."
     elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
-    echo "⚠ 'auth' existe como directorio normal. No se elimina (por seguridad)."
+    rm -rf "${PROJECT_ROOT}/auth"
+    echo "✔ directorio auth eliminado por seguridad."
 else
-    echo "✔ No existe 'auth' en el root del proyecto (correcto)."
+    echo "✔ auth no existe (correcto)."
 fi
 
 # ---------------------------------------------------------
-# 5. Limpiar archivos internos de openshift-install
+# 6. Limpiar cache de openshift-install
 # ---------------------------------------------------------
-echo "[5/5] Eliminando estado interno de openshift-install..."
+echo "[6/6] Eliminando cache ~/.cache/openshift-install..."
 
-rm -f "${PROJECT_ROOT}"/.openshift_install.log*         2>/dev/null || true
-rm -f "${PROJECT_ROOT}"/.openshift_install_state.json*  2>/dev/null || true
-rm -f "${PROJECT_ROOT}"/.openshift_install.lock*        2>/dev/null || true
-rm -rf ~/.cache/openshift-install                      2>/dev/null || true
+rm -rf ~/.cache/openshift-install 2>/dev/null || true
+echo "✔ Cache de openshift-install eliminada."
 
 echo "=============================================="
 echo "   CLEAN STATE COMPLETO — TODO ELIMINADO"
-echo "   OKD completamente destruido y reseteado."
 echo "=============================================="
