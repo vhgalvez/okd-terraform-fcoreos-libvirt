@@ -3,11 +3,11 @@ hostname: ${hostname}
 manage_etc_hosts: false
 timezone: ${timezone}
 
-# SINCRONIZAR HORA CON EL HOST (NTP)
+# NTP sincronizar hora desde el host físico (10.56.0.1)
 ntp:
   enabled: true
   servers:
-    - 10.56.0.1   # dirección del host KVM/libvirt
+    - 10.56.0.1
 
 ssh_pwauth: false
 disable_root: false
@@ -16,8 +16,8 @@ users:
   - default
 
   - name: root
-    ssh_authorized_keys: |
-      ${ssh_keys}
+    ssh_authorized_keys:
+      - ${ssh_keys}
 
   - name: core
     gecos: "Core User"
@@ -25,8 +25,8 @@ users:
     groups: [wheel]
     shell: /bin/bash
     lock_passwd: false
-    ssh_authorized_keys: |
-      ${ssh_keys}
+    ssh_authorized_keys:
+      - ${ssh_keys}
 
 ###########################################################
 # WRITE_FILES
@@ -50,24 +50,24 @@ write_files:
       method=manual
       address1=${ip}/24,${gateway}
       dns=${dns1};${dns2}
-      dns-search=${cluster_fqdn}
+      dns-search=${cluster_domain}
       may-fail=false
 
       [ipv6]
       method=ignore
 
-#────────────────────────────────────────────────────────
-# /etc/hosts dinámico
-#────────────────────────────────────────────────────────
-- path: /usr/local/bin/set-hosts.sh
-  permissions: "0755"
-  content: |
-    #!/bin/bash
-    {
-      echo "127.0.0.1   localhost"
-      echo "::1         localhost"
-      echo "${ip}  ${hostname} ${short_hostname}"
-    } > /etc/hosts
+  #────────────────────────────────────────────────────────
+  # /etc/hosts dinámico
+  #────────────────────────────────────────────────────────
+  - path: /usr/local/bin/set-hosts.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      {
+        echo "127.0.0.1   localhost"
+        echo "::1         localhost"
+        echo "${ip}  ${hostname} ${short_hostname}"
+      } > /etc/hosts
 
   #────────────────────────────────────────────────────────
   # sysctl necesario
@@ -93,7 +93,7 @@ write_files:
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
-      ${cluster_fqdn} {
+      ${cluster_name}.${cluster_domain} {
         file /etc/coredns/db.okd
       }
       . {
@@ -106,14 +106,14 @@ write_files:
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
-      $ORIGIN ${cluster_fqdn}.
-      @   IN SOA dns.${cluster_fqdn}. admin.${cluster_fqdn}. (
+      $ORIGIN ${cluster_name}.${cluster_domain}.
+      @   IN SOA dns.${cluster_name}.${cluster_domain}. admin.${cluster_name}.${cluster_domain}. (
               2025010101
               7200
               3600
               1209600
               3600 )
-      @       IN NS dns.${cluster_fqdn}.
+      @           IN NS dns.${cluster_name}.${cluster_domain}.
       dns         IN A ${ip}
 
       api         IN A ${ip}
@@ -204,20 +204,21 @@ runcmd:
   - swapon /swapfile
   - echo "/swapfile none swap sw 0 0" >> /etc/fstab
 
-  # Hosts
+  # Actualizar /etc/hosts
   - /usr/local/bin/set-hosts.sh
 
-  # Reload network
+  # Reload NetworkManager
   - nmcli connection reload
   - nmcli connection down eth0 || true
   - nmcli connection up eth0
 
-  # Install base packages
+  # Instalar paquetes base
   - dnf install -y firewalld chrony curl tar bind-utils haproxy policycoreutils-python-utils
 
-  # Asegurar NTP sincronizando con el host
+  # Chrony — configurar servidor NTP
   - systemctl enable --now chronyd
   - sed -i 's/^pool.*/server 10.56.0.1 iburst/' /etc/chrony.conf
+  - echo "allow 10.56.0.0/24" >> /etc/chrony.conf
   - systemctl restart chronyd
 
   # sysctl
@@ -225,18 +226,18 @@ runcmd:
 
   # resolv.conf final
   - rm -f /etc/resolv.conf
-  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_fqdn}\n" > /etc/resolv.conf
+  - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_domain}\n" > /etc/resolv.conf
 
-  # Install CoreDNS binary
+  # Instalar CoreDNS binary
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
   - chmod +x /usr/local/bin/coredns
 
-  # SELinux
+  # SELinux — permitir HAProxy
   - setsebool -P haproxy_connect_any 1
 
-  # Enable services
+  # Habilitar servicios
   - systemctl daemon-reload
   - systemctl enable firewalld chronyd coredns haproxy
   - systemctl restart firewalld chronyd coredns haproxy
