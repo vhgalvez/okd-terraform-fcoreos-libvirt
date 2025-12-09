@@ -59,7 +59,6 @@ resource "libvirt_domain" "infra" {
   arch    = "x86_64"
   machine = "pc"
 
-
 # time synchronization
 clock {
   offset = "utc"
