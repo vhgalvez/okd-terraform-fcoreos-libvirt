@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# scripts/destroy.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,7 +14,7 @@ echo "      ELIMINANDO CLUSTER OKD COMPLETAMENTE"
 echo "=============================================="
 
 # ---------------------------------------------------------
-# 1. Destruir infraestructura Terraform
+# 1. Terraform destroy
 # ---------------------------------------------------------
 if [[ -d "$TERRAFORM_DIR" ]]; then
     echo "[1/6] Ejecutando terraform destroy..."
@@ -23,63 +24,59 @@ else
 fi
 
 # ---------------------------------------------------------
-# 2. Eliminar carpeta generated completa
+# 2. Eliminar carpeta generated/ SIEMPRE, COMPLETA
 # ---------------------------------------------------------
 echo "[2/6] Eliminando carpeta generated/ COMPLETA..."
 
-if [[ -d "$GENERATED_DIR" ]]; then
-    rm -rf "${GENERATED_DIR}"
-    echo "✔ generated/ eliminada por completo."
-else
-    echo "✔ generated/ no existe (correcto)."
-fi
+rm -rf "${GENERATED_DIR}"
+
+echo "✔ generated/ eliminada por completo."
 
 # ---------------------------------------------------------
-# 3. Eliminar archivos openshift-install en el proyecto
+# 3. Archivos openshift-install
 # ---------------------------------------------------------
 echo "[3/6] Eliminando archivos openshift-install..."
 
-rm -f "${PROJECT_ROOT}/.openshift_install.log" 2>/dev/null || true
-rm -f "${PROJECT_ROOT}/.openshift_install_state.json" 2>/dev/null || true
-rm -f "${PROJECT_ROOT}/.openshift_install.lock" 2>/dev/null || true
+rm -f "${PROJECT_ROOT}/.openshift_install.log"*        2>/dev/null || true
+rm -f "${PROJECT_ROOT}/.openshift_install_state.json"* 2>/dev/null || true
+rm -f "${PROJECT_ROOT}/.openshift_install.lock"*       2>/dev/null || true
 
-# Eliminar variantes (*.log, *.json)
-rm -f "${PROJECT_ROOT}"/*.log 2>/dev/null || true
-rm -f "${PROJECT_ROOT}"/*.json 2>/dev/null || true
-
-echo "✔ Archivos openshift-install y logs/json eliminados."
+echo "✔ Archivos openshift-install eliminados."
 
 # ---------------------------------------------------------
-# 4. Eliminar archivos .ign en todo el proyecto
+# 4. Eliminar ignitions .ign en todo el proyecto
 # ---------------------------------------------------------
 echo "[4/6] Eliminando ignitions viejos (.ign)..."
 
 find "$PROJECT_ROOT" -type f -name "*.ign" -exec rm -f {} \; 2>/dev/null || true
 
-echo "✔ Ignitions viejos eliminados."
+echo "✔ Ignitions eliminados."
 
 # ---------------------------------------------------------
-# 5. Eliminar symlink auth
+# 5. Eliminar auth (symlink o carpeta)
 # ---------------------------------------------------------
-echo "[5/6] Eliminando symlink auth si existe..."
+echo "[5/6] Eliminando auth..."
 
 if [[ -L "${PROJECT_ROOT}/auth" ]]; then
     rm -f "${PROJECT_ROOT}/auth"
     echo "✔ symlink auth eliminado."
-    elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
+
+elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
     rm -rf "${PROJECT_ROOT}/auth"
-    echo "✔ directorio auth eliminado por seguridad."
+    echo "✔ directorio auth eliminado."
+
 else
     echo "✔ auth no existe (correcto)."
 fi
 
 # ---------------------------------------------------------
-# 6. Limpiar cache de openshift-install
+# 6. Cache openshift-install
 # ---------------------------------------------------------
 echo "[6/6] Eliminando cache ~/.cache/openshift-install..."
 
 rm -rf ~/.cache/openshift-install 2>/dev/null || true
-echo "✔ Cache de openshift-install eliminada."
+
+echo "✔ Cache eliminada."
 
 echo "=============================================="
 echo "   CLEAN STATE COMPLETO — TODO ELIMINADO"
