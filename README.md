@@ -483,6 +483,7 @@ sudo virsh list --all
   }
 
 
+/etc/resolv.conf
 
 sudo git reset --hard HEAD
 sudo git pull
