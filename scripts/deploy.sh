@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
+mkdir -p "${PROJECT_ROOT}/generated"
+
 INSTALL_DIR="${PROJECT_ROOT}/install-config"
 GENERATED_DIR="${PROJECT_ROOT}/generated"
 IGNITION_DIR="${GENERATED_DIR}/ignition"

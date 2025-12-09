@@ -456,6 +456,9 @@ okd-terraform-fcoreos-libvirt/
 EN BOOTSTRAP:
 
 sudo journalctl -b -f -u bootkube.service
+sudo journalctl -b -f -u kubelet.service
+
+
 
 
 
@@ -469,7 +472,7 @@ EOF'
 sudo virsh net-list --all
 sudo virsh net-dhcp-leases okd-net
 
-
+sudo virsh list --all
 
  network_interface {
     network_name = libvirt_network.okd_net.name
