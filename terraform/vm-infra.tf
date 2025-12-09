@@ -59,27 +59,6 @@ resource "libvirt_domain" "infra" {
   arch    = "x86_64"
   machine = "pc"
 
-# time synchronization
-clock {
-  offset = "utc"
-
-  timer {
-    name = "rtc"
-    tickpolicy = "catchup"
-  }
-
-  timer {
-    name = "pit"
-    tickpolicy = "delay"
-  }
-
-  timer {
-    name = "hpet"
-    present = false
-  }
-}
-
-
   # Disco raíz AlmaLinux
   disk {
     volume_id = libvirt_volume.infra_disk.id
