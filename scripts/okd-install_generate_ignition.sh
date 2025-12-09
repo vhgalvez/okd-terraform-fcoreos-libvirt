@@ -59,7 +59,7 @@ echo "[3/3] Mostrando fechas de certificados…"
 grep -R "Not Before" -n generated/auth 2>/dev/null || true
 grep -R "Not After" -n generated/auth 2>/dev/null || true
 
-echo "=============================================="
+echo "=========================================================="
 echo "  ✔ IGNITIONS GENERADAS EXITOSAMENTE"
-echo "  Ahora ejecuta: scripts/02_deploy_infra.sh"
-echo "=============================================="
+echo "  Ahora ejecuta: scripts\okd-install_generate_ignition.sh"
+echo "=========================================================="
