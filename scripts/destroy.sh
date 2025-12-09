@@ -60,11 +60,11 @@ echo "[5/6] Eliminando auth..."
 if [[ -L "${PROJECT_ROOT}/auth" ]]; then
     rm -f "${PROJECT_ROOT}/auth"
     echo "✔ symlink auth eliminado."
-
-elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
+    
+    elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
     rm -rf "${PROJECT_ROOT}/auth"
     echo "✔ directorio auth eliminado."
-
+    
 else
     echo "✔ auth no existe (correcto)."
 fi

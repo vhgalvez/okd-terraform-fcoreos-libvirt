@@ -72,13 +72,13 @@ echo "[2/5] Verificando symlink 'auth'..."
 
 if [[ -L "${PROJECT_ROOT}/auth" ]]; then
     echo "✔ Symlink existente: auth → generated/auth"
-
-elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
+    
+    elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
     echo "⚠ Directorio 'auth' existe y NO es symlink. Eliminando..."
     rm -rf "${PROJECT_ROOT}/auth"
     ln -s generated/auth auth
     echo "✔ Symlink creado: auth → generated/auth"
-
+    
 else
     ln -s generated/auth auth
     echo "✔ Symlink creado: auth → generated/auth"
