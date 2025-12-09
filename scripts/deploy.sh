@@ -34,12 +34,23 @@ fi
 mkdir -p "${IGNITION_DIR}"
 
 # ----------------------------------------------------
+# 0. Limpieza ligera antes de generar nuevas Ignitions
+# ----------------------------------------------------
+echo "[0/5] Preparando entorno (limpieza ligera)..."
+
+# borrar ignitions viejas en generated/ y generated/ignition/
+rm -f "${GENERATED_DIR}"/*.ign 2>/dev/null || true
+rm -f "${IGNITION_DIR}"/*.ign 2>/dev/null || true
+
+# borrar estado interno de openshift-install para esta dir
+rm -f "${PROJECT_ROOT}"/.openshift_install.log*         2>/dev/null || true
+rm -f "${PROJECT_ROOT}"/.openshift_install_state.json*  2>/dev/null || true
+rm -f "${PROJECT_ROOT}"/.openshift_install.lock*        2>/dev/null || true
+
+# ----------------------------------------------------
 # 1. Copiar install-config.yaml a generated/
 # ----------------------------------------------------
-echo "[0/5] Preparando entorno..."
-
 cp -f "${INSTALL_DIR}/install-config.yaml" "${GENERATED_DIR}/install-config.yaml"
-
 echo "✔ install-config.yaml copiado a generated/"
 
 # ----------------------------------------------------
@@ -51,9 +62,7 @@ echo "✔ Ignition generado correctamente."
 
 # Mover ignitions a generated/ignition/
 echo "[+] Moviendo Ignition a ${IGNITION_DIR}/..."
-mkdir -p "${IGNITION_DIR}"
 mv -f "${GENERATED_DIR}"/*.ign "${IGNITION_DIR}/" 2>/dev/null || true
-
 echo "✔ Ignitions organizadas."
 
 # ----------------------------------------------------
@@ -63,7 +72,7 @@ echo "[2/5] Verificando symlink 'auth'..."
 
 if [[ -L "${PROJECT_ROOT}/auth" ]]; then
     echo "✔ Symlink existente: auth → generated/auth"
-elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
+    elif [[ -d "${PROJECT_ROOT}/auth" ]]; then
     echo "⚠ Directorio 'auth' existe y NO es symlink. Eliminando..."
     rm -rf "${PROJECT_ROOT}/auth"
     ln -s generated/auth auth
@@ -73,7 +82,6 @@ else
     echo "✔ Symlink creado: auth → generated/auth"
 fi
 
-# Seguridad: mostrar contenido del auth real
 echo "[+] Contenido de generated/auth:"
 ls -l generated/auth || echo "⚠ WARNING: auth vacío (Terraform aún no creó VMs)"
 
