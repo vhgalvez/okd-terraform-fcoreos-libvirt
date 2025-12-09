@@ -19,7 +19,7 @@ users:
     ssh_authorized_keys:
       - ${ssh_keys}
 
-  # ✔ Usuario core consistente con el resto de nodos
+  # ✔ Usuario core consistente con FCOS y OKD
   - name: core
     gecos: "Core User"
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
@@ -103,7 +103,7 @@ write_files:
       }
 
   #────────────────────────────────────────────────────────
-  # CoreDNS — zona DNS OKD (AUTORITATIVA)
+  # CoreDNS — zona DNS OKD (db.okd)
   #────────────────────────────────────────────────────────
   - path: /etc/coredns/db.okd
     permissions: "0644"
@@ -122,7 +122,7 @@ write_files:
       api         IN A ${ip}
       api-int     IN A ${ip}
 
-      # ✔ Nodos
+      # ✔ Nodos del clúster
       bootstrap   IN A 10.56.0.11
       master      IN A 10.56.0.12
       worker      IN A 10.56.0.13
@@ -130,8 +130,8 @@ write_files:
       # ✔ apps
       *.apps      IN A ${ip}
 
-      # ✔ dominio base (IMPORTANTE)
-      ${cluster_name} IN A ${ip}
+      # ❌ ELIMINADO registro conflictivo:
+      # ${cluster_name} IN A ${ip}
 
   #────────────────────────────────────────────────────────
   # CoreDNS — systemd unit
@@ -236,7 +236,7 @@ runcmd:
   - rm -f /etc/resolv.conf
   - printf "nameserver ${dns1}\nnameserver ${dns2}\nsearch ${cluster_name}.${cluster_domain}\n" > /etc/resolv.conf
 
-  # Instalar CoreDNS binary
+  # Instalar CoreDNS
   - mkdir -p /etc/coredns
   - curl -L -o /tmp/coredns.tgz https://github.com/coredns/coredns/releases/download/v1.13.1/coredns_1.13.1_linux_amd64.tgz
   - tar -xzf /tmp/coredns.tgz -C /usr/local/bin
