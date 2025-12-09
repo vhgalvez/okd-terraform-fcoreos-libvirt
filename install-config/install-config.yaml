@@ -12,8 +12,6 @@ networking:
       hostPrefix: 23
   serviceNetwork:
     - 172.30.0.0/16
-  dns:
-    - 10.56.0.10
 
 platform:
   none: {}
