@@ -61,5 +61,5 @@ grep -R "Not After" -n generated/auth 2>/dev/null || true
 
 echo "=========================================================="
 echo "  ✔ IGNITIONS GENERADAS EXITOSAMENTE"
-echo "  Ahora ejecuta: scripts\okd-install_generate_ignition.sh"
+echo "  Ahora ejecuta: scripts/deploy_infra.sh"
 echo "=========================================================="
