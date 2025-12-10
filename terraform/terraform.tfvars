@@ -1,4 +1,3 @@
-# terraform\terraform.tfvars
 ###############################################
 # RED
 ###############################################
@@ -23,45 +22,66 @@ ssh_keys = [
 ###############################################
 infra = {
   cpus     = 2
-  memory   = 3072 # 3 GB (suficiente para DNS/NTP/LB)
+  memory   = 3072
   ip       = "10.56.0.10"
   hostname = "infra.okd.local"
   mac      = "52:54:00:00:00:10"
 }
 
 ###############################################
-# BOOTSTRAP (Control Plane temporal)
+# BOOTSTRAP (Temporal)
 ###############################################
 bootstrap = {
   cpus     = 4
-  memory   = 8192 # 8 GB (solo durante bootstrap)
+  memory   = 9216   # 9 GB
   hostname = "bootstrap.okd.local"
   ip       = "10.56.0.11"
   mac      = "52:54:00:00:00:11"
 }
 
 ###############################################
-# MASTER (Control Plane real)
+# MASTER 1 (Principal)
 ###############################################
-master = {
+master1 = {
   cpus     = 4
-  memory   = 12288 # 12 GB (control-plane estable)
-  hostname = "master.okd.local"
+  memory   = 16384  # 16 GB
+  hostname = "master1.okd.local"
   ip       = "10.56.0.12"
   mac      = "52:54:00:00:00:12"
 }
 
 ###############################################
-# WORKER (Pods / Routers / OVN)
+# MASTER 2 (zombi)
+###############################################
+master2 = {
+  cpus     = 2
+  memory   = 3072   # 3 GB
+  hostname = "master2.okd.local"
+  ip       = "10.56.0.14"
+  mac      = "52:54:00:00:00:14"
+}
+
+###############################################
+# MASTER 3 (zombi)
+###############################################
+master3 = {
+  cpus     = 2
+  memory   = 3072   # 3 GB
+  hostname = "master3.okd.local"
+  ip       = "10.56.0.15"
+  mac      = "52:54:00:00:00:15"
+}
+
+###############################################
+# WORKER
 ###############################################
 worker = {
-  cpus     = 2
-  memory   = 6144 # 6 GB (mínimo decente para router + pods)
+  cpus     = 4
+  memory   = 8192   # 8 GB
   hostname = "worker.okd.local"
   ip       = "10.56.0.13"
   mac      = "52:54:00:00:00:13"
 }
-
 
 ###############################################
 # DNS CONFIG
@@ -77,6 +97,4 @@ cluster_domain = "okd.local"
 cluster_name   = "okd"
 
 timezone = "UTC"
-
-# DNS RESOLVER PARA EL NODO INFRA
 infra_ip = "10.56.0.10"

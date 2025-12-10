@@ -18,7 +18,7 @@ platform:
 
 controlPlane:
   name: master
-  replicas: 1
+  replicas: 3
   platform: {}
   architecture: amd64
 
