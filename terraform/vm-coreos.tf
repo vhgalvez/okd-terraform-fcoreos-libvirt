@@ -1,3 +1,4 @@
+# terraform\vm-coreos.tf
 ###############################################
 # FEDORA COREOS BASE
 ###############################################
@@ -48,7 +49,7 @@ resource "libvirt_volume" "worker_disk" {
 }
 
 ###############################################
-# IGNITION FILES (Bootstrap / Master / Worker)
+# IGNITION FILES
 ###############################################
 
 resource "libvirt_ignition" "bootstrap" {
@@ -132,7 +133,11 @@ resource "libvirt_domain" "master1" {
     wait_for_lease = true
   }
 
-  console { type = "pty", target_type = "serial", target_port = 0 }
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = 0
+  }
 
   graphics {
     type           = "vnc"
@@ -169,7 +174,11 @@ resource "libvirt_domain" "master2" {
     wait_for_lease = true
   }
 
-  console { type = "pty", target_type = "serial", target_port = 0 }
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = 0
+  }
 
   graphics {
     type           = "vnc"
@@ -206,7 +215,11 @@ resource "libvirt_domain" "master3" {
     wait_for_lease = true
   }
 
-  console { type = "pty", target_type = "serial", target_port = 0 }
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = 0
+  }
 
   graphics {
     type           = "vnc"
@@ -243,7 +256,11 @@ resource "libvirt_domain" "worker" {
     wait_for_lease = true
   }
 
-  console { type = "pty", target_type = "serial", target_port = 0 }
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = 0
+  }
 
   graphics {
     type           = "vnc"
