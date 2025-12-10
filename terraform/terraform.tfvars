@@ -55,7 +55,7 @@ master1 = {
 ###############################################
 master2 = {
   cpus     = 2
-  memory   = 3072   # 3 GB
+  memory   = 4096   # 4 GB
   hostname = "master2.okd.local"
   ip       = "10.56.0.14"
   mac      = "52:54:00:00:00:14"
@@ -66,7 +66,7 @@ master2 = {
 ###############################################
 master3 = {
   cpus     = 2
-  memory   = 3072   # 3 GB
+  memory   = 4096   # 4 GB
   hostname = "master3.okd.local"
   ip       = "10.56.0.15"
   mac      = "52:54:00:00:00:15"
@@ -77,7 +77,7 @@ master3 = {
 ###############################################
 worker = {
   cpus     = 4
-  memory   = 8192   # 8 GB
+  memory   = 6144   # 8 GB
   hostname = "worker.okd.local"
   ip       = "10.56.0.13"
   mac      = "52:54:00:00:00:13"
