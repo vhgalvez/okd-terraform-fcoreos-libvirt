@@ -38,7 +38,7 @@ El nodo `infra` proporciona:
 
 ## 3. Estructura del repositorio
 
-```
+```text
 okd-terraform-fcoreos-libvirt/
 ├── DOCUMENTACION.md
 ├── README.md
@@ -69,13 +69,9 @@ okd-terraform-fcoreos-libvirt/
 
 ---
 
-## 4. Instalación de `openshift-install`
+## 4. Instalación de herramientas OKD (`openshift-install`, `oc`, `kubectl`)
 
-Descargar el instalador OKD:
-
-
-# Instalador OKD
-
+### Instalador OKD
 
 ```bash
 cd /tmp
@@ -87,7 +83,7 @@ export PATH=$PATH:/opt/bin
 echo "export PATH=\$PATH:/opt/bin" >> ~/.bashrc
 ```
 
-# Cliente (oc + kubectl)
+### Cliente (oc + kubectl)
 
 ```bash
 # OpenShift Client (oc)
@@ -97,17 +93,14 @@ sudo mv /tmp/oc /opt/bin/oc
 sudo chmod +x /opt/bin/oc
 export PATH=$PATH:/opt/bin
 echo "export PATH=\$PATH:/opt/bin" >> ~/.bashrc
-
 ```
 
-
-Verificar instalación:
+### Verificar instalación
 
 ```bash
 openshift-install version
 oc version
 kubectl version --client
-
 ```
 
 ---
@@ -226,6 +219,32 @@ openshift-install wait-for bootstrap-complete --dir=.
 openshift-install wait-for install-complete --dir=.
 ```
 
+Verás algo como:
+
+```
+INFO Waiting up to 20m0s for the Kubernetes API at https://api.okd-lab.cefaslocalserver.com:6443...
+INFO API v1.25.0 up
+INFO Waiting up to 40m0s for bootstrapping to complete...
+INFO Bootstrap status: complete
+INFO It is now safe to remove the bootstrap resources
+```
+
+👉 Cuando aparezca EXACTAMENTE esta línea:
+
+```
+INFO Bootstrap status: complete
+```
+
+Ya puedes ejecutar `destroy_bootstrap.sh`.
+
+Si aparece:
+
+```
+ERROR Bootstrap failed to complete
+```
+
+entonces **NO** destruyas el bootstrap.
+
 ---
 
 ## 10. Acceder al clúster
@@ -270,108 +289,29 @@ terraform destroy -auto-approve
 
 ---
 
-## 13. ¿Por qué este proyecto existe?
+## 13. Troubleshooting y tips
 
-- ✔ Entender OKD en profundidad
-- ✔ Usar Terraform como infraestructura declarativa
-- ✔ Aprender Ignition y FCOS
-- ✔ Simular un entorno OpenShift corporativo en tu homelab
-- ✔ Alternar entre K3s (ligero) y OKD (pesado) cuando quieras
+### Validar SSH en Ignition
 
-
----
-
-sudo nano /etc/sysconfig/nftables.conf
-
-## Aplicar la configuración y habilitar el servicio
-
-1. **Cargar las reglas**:
-
-   ```bash
-   sudo nft -f /etc/sysconfig/nftables.conf
-   sudo nft list ruleset | sudo tee /etc/sysconfig/nftables.conf
-   ```
-
-2. **Habilitar el servicio `nftables` para que se cargue al inicio**:
-
-   ```bash
-   sudo systemctl daemon-reexec
-   sudo systemctl enable --now nftables
-   sudo systemctl restart nftables
-   sudo systemctl status nftables
-   ```
-
-3. **Validar la configuración**:
-
-   ```bash
-   sudo nft list ruleset
-   ```
-
----
-
-## Instalación de herramientas OKD (`oc` + `openshift-install`) en Rocky Linux [Instalación de herramientas OKD ](install_okd.md)
-
-
-## Configura el `kubeconfig` para acceder al clúster OKD desde la máquina host.
+Verifica si la clave ssh está en el ignition del bootstrap:
 
 ```bash
-  sudo chmod +x ./configure_okd_kubeconfig.sh
-
-./configure_okd_kubeconfig.sh
-
-```
-
-```bash
-sudo chown -R victory:victory /home/victory/okd-terraform-fcoreos-libvirt
-
-cd install-config
-
-openshift-install wait-for bootstrap-complete --log-level=info
-
-
-cat install-config/install-config.yaml | grep sshKey -n -A2
-
-
-sudo grep -o "ssh-rsa" ignition/bootstrap.ign | wc -l
-
-
-verificar si la clave ssh está en el ignition del bootstrap
 grep -R "ssh" -n ignition/bootstrap.ign
-
 ```
 
-## error
-error [error](error.md)
+### Verificar status con openshift-install
 
+```bash
+openshift-install wait-for bootstrap-complete --log-level=info
+```
 
+### Latencia en la VM okd-bootstrap
 
-
-
-## latencia en la VM okd-bootstrap.
-
-Conéctese a su VM okd-bootstrap (ID 7) y ejecute los siguientes comandos:
-
-Instalar fio (si no está instalado):
-
-Bash
-
-# En el nodo okd-bootstrap
+Conéctese a su VM okd-bootstrap y ejecute:
 
 ```bash
 sudo dnf install -y fio || sudo yum install -y fio 
-```
-Ejecutar la prueba de latencia (randwrite, 4K blocks):
-
-
-
-# En el nodo okd-bootstrap
-
-```bash
-sudo fio --name=iops_test --filesize=1G --bs=4k --ioengine=libaio --iodepth=64 --rw=ran
-```
-
-
-```bash
+sudo fio --name=iops_test --filesize=1G --bs=4k --ioengine=libaio --iodepth=64 --rw=randwrite
 sudo fio --name=etcd_like \
   --filename=/var/lib/etcd_testfile \
   --filesize=1G \
@@ -381,58 +321,55 @@ sudo fio --name=etcd_like \
   --iodepth=1 \
   --fsync=1 \
   --time_based --runtime=60
-
 ```
 
+### Comandos útiles libvirt
 
-verificar status con openshift-install
+```bash
+sudo virsh net-list --all
+sudo virsh net-dhcp-leases okd-net
+sudo virsh list --all
+```
 
-En la carpeta donde está tu install-config.yaml y los .ign, ejecuta:
+### Configuración de red en /etc/hosts
 
+```bash
+sudo bash -c 'cat >> /etc/hosts <<EOF
+10.56.0.10 api.okd.okd.local api-int.okd.okd.local
+10.56.0.10 console-openshift-console.apps.okd.okd.local
+EOF'
+```
+
+### Configuración de nftables
+
+```bash
+sudo nano /etc/sysconfig/nftables.conf
+sudo nft -f /etc/sysconfig/nftables.conf
+sudo nft list ruleset | sudo tee /etc/sysconfig/nftables.conf
+sudo systemctl daemon-reexec
+sudo systemctl enable --now nftables
+sudo systemctl restart nftables
+sudo systemctl status nftables
+sudo nft list ruleset
+```
+
+---
+
+## 14. Configura el `kubeconfig` para acceder al clúster OKD desde la máquina host
+
+```bash
+sudo chmod +x ./configure_okd_kubeconfig.sh
+./configure_okd_kubeconfig.sh
+sudo chown -R victory:victory /home/victory/okd-terraform-fcoreos-libvirt
+cd install-config
 openshift-install wait-for bootstrap-complete --log-level=info
+cat install-config/install-config.yaml | grep sshKey -n -A2
+sudo grep -o "ssh-rsa" ignition/bootstrap.ign | wc -l
+```
 
+---
 
-Verás algo como:
-
-INFO Waiting up to 20m0s for the Kubernetes API at https://api.okd-lab.cefaslocalserver.com:6443...
-INFO API v1.25.0 up
-INFO Waiting up to 40m0s for bootstrapping to complete...
-INFO Bootstrap status: complete
-INFO It is now safe to remove the bootstrap resources
-
-
-👉 Cuando aparezca EXACTAMENTE esta línea:
-
-INFO Bootstrap status: complete
-
-
-Ya puedes ejecutar destroy_bootstrap.sh.
-
-Si aparece:
-
-ERROR Bootstrap failed to complete
-
-
-entonces NO destruyas el bootstrap.
-
-chmod +x destroy_bootstrap.sh
-./destroy_bootstrap.sh
-
-
-
-# 🚀 Flujo completo de instalación y ciclo de vida de OKD 4.x con Terraform + Libvirt
-
-Este documento describe **paso a paso** el flujo completo para:
-
-1. Instalar herramientas de OKD (`oc`, `kubectl`, `openshift-install`)
-2. Desplegar el clúster con Terraform
-3. Esperar a que el **bootstrap** finalice correctamente
-4. Destruir el nodo **bootstrap**
-5. Configurar `kubeconfig` para usar `oc`
-6. (Opcional) Destruir toda la infraestructura
-7. (Opcional) Desinstalar herramientas de OKD
-
-Estructura del proyecto (resumen):
+## 15. Estructura del proyecto (resumen)
 
 ```bash
 okd-terraform-fcoreos-libvirt/
@@ -450,42 +387,15 @@ okd-terraform-fcoreos-libvirt/
 │   └── uninstall_okd.sh
 └── terraform/
     └── ...                  # main.tf, vm-coreos.tf, terraform.tfvars, etc.
+```
 
+---
 
+## 16. Autor
 
-EN BOOTSTRAP:
+**Víctor Hugo Gálvez Sastoque**  
+Especialista en DevOps, Infraestructura, Kubernetes y Automatización.  
+Ingeniero con visión estratégica orientado a soluciones escalables y eficientes.
 
-sudo journalctl -b -f -u bootkube.service
-sudo journalctl -b -f -u kubelet.service
-
-
-
-
-
-# En rocky linux agregar entradas en /etc/hosts
-sudo bash -c 'cat >> /etc/hosts <<EOF
-10.56.0.10 api.okd.okd.local api-int.okd.okd.local
-10.56.0.10 console-openshift-console.apps.okd.okd.local
-EOF'
-
-
-sudo virsh net-list --all
-sudo virsh net-dhcp-leases okd-net
-
-sudo virsh list --all
-
- network_interface {
-    network_name = libvirt_network.okd_net.name
-    mac          = var.bootstrap.mac
-    addresses    = [var.bootstrap.ip]
-    hostname     = var.bootstrap.hostname
-    wait_for_lease = true
-  }
-
-
-/etc/resolv.conf
-
-sudo git reset --hard HEAD
-sudo git pull
-
-
+- 🌐 **GitHub:** [@vhgalvez](https://github.com/vhgalvez)
+- 💼 **LinkedIn:** [victor-hugo-galvez-sastoque](https://www.linkedin.com/in/victor-hugo-galvez-sastoque/)
