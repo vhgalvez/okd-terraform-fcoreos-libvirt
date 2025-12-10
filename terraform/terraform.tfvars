@@ -18,52 +18,52 @@ ssh_keys = [
   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCdfUJjRAJuFcdO0J8CIOkjaKpqP6h9TqDRhZOJTac0199gFUvAJF9R/MAqwDLi2QI6OtYjz1CiCSVLtVQ2fTTIdwVibr+ZKDcbx/E7ivKUUbcmAOU8NP1gv3e3anoUd5k/0h0krP88CXosr41eTih4EcKhBAKbeZ11M0i9GZOux+/WweLtSQ3NU07sUkf1jDIoBungg77unmadqP3m9PUdkFP7tZ2lufcs3iq+vq8JaUBs/hZKNmWOXpnAyNxD9RlBJmvW2QgHmX53y3WC9bWUEUrwfDMB2wAqWPEDfj+5jsXQZcVE4pqD6T1cPaITnr9KFGnCCG1VQg31t1Jttg8z vhgalvez@gmail.com"
 ]
 
+
 ###############################################
-# SERVIDOR INFRA (DNS + NTP + COREDNS + LB)
+# SERVIDOR INFRA (DNS + NTP + LB + COREDNS)
 ###############################################
 infra = {
   cpus     = 2
-  memory   = 3072 # 3 GB
+  memory   = 4096 # 4 GB
   ip       = "10.56.0.10"
   hostname = "infra.okd.local"
   mac      = "52:54:00:00:00:10"
 }
 
-
 ###############################################
 # BOOTSTRAP (Control Plane temporal)
 ###############################################
 bootstrap = {
-  cpus     = 6
-  memory   = 20480 # 20 GB
+  cpus     = 4
+  memory   = 12288 # 12 GB (o 16 si vas sobrado)
   hostname = "bootstrap.okd.local"
   ip       = "10.56.0.11"
   mac      = "52:54:00:00:00:11"
 }
-
 
 ###############################################
 # MASTER (Control Plane real)
 ###############################################
 master = {
   cpus     = 4
-  memory   = 8192 # 8 GB
+  memory   = 14336 # 14 GB (mínimo 12, ideal 14–16)
   hostname = "master.okd.local"
   ip       = "10.56.0.12"
   mac      = "52:54:00:00:00:12"
 }
 
-
 ###############################################
-# WORKER (correr Pods / Apps / Tests)
+# WORKER (Nodos para pods / routers / OVN)
 ###############################################
 worker = {
   cpus     = 2
-  memory   = 2048 # 2 GB
+  memory   = 4096 # 4 GB (mínimo; ideal 6–8 GB)
   hostname = "worker.okd.local"
   ip       = "10.56.0.13"
   mac      = "52:54:00:00:00:13"
 }
+
+
 
 ###############################################
 # DNS CONFIG
@@ -81,4 +81,4 @@ cluster_name   = "okd"
 timezone = "UTC"
 
 # DNS RESOLVER PARA EL NODO INFRA
-infra_ip   = "10.56.0.10"
+infra_ip = "10.56.0.10"
