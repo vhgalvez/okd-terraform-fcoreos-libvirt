@@ -79,3 +79,6 @@ cluster_domain = "okd.local"
 cluster_name   = "okd"
 
 timezone = "UTC"
+
+# DNS RESOLVER PARA EL NODO INFRA
+infra_ip   = "10.56.0.10"
