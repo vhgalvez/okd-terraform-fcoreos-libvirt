@@ -1,4 +1,3 @@
-# terraform/vm-coreos.tf
 ###############################################
 # FEDORA COREOS BASE
 ###############################################
@@ -10,8 +9,9 @@ resource "libvirt_volume" "coreos_base" {
 }
 
 ###############################################
-# OVERLAY DISKS
+# OVERLAY DISKS (Bootstrap + 3 Masters + Worker)
 ###############################################
+
 resource "libvirt_volume" "bootstrap_disk" {
   name           = "bootstrap.qcow2"
   pool           = libvirt_pool.okd.name
@@ -48,8 +48,9 @@ resource "libvirt_volume" "worker_disk" {
 }
 
 ###############################################
-# IGNITION FILES
+# IGNITION FILES (Bootstrap / Master / Worker)
 ###############################################
+
 resource "libvirt_ignition" "bootstrap" {
   name    = "bootstrap.ign"
   pool    = libvirt_pool.okd.name
@@ -71,15 +72,14 @@ resource "libvirt_ignition" "worker" {
 ###############################################
 # BOOTSTRAP NODE
 ###############################################
+
 resource "libvirt_domain" "bootstrap" {
   name      = "okd-bootstrap"
   vcpu      = var.bootstrap.cpus
   memory    = var.bootstrap.memory
   autostart = true
 
-  disk {
-    volume_id = libvirt_volume.bootstrap_disk.id
-  }
+  disk { volume_id = libvirt_volume.bootstrap_disk.id }
 
   network_interface {
     network_name   = libvirt_network.okd_net.name
@@ -91,7 +91,11 @@ resource "libvirt_domain" "bootstrap" {
 
   cpu { mode = "host-passthrough" }
 
-  console { type = "pty", target_type = "serial", target_port = 0 }
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = 0
+  }
 
   graphics {
     type           = "vnc"
@@ -109,6 +113,7 @@ resource "libvirt_domain" "bootstrap" {
 ###############################################
 # MASTER 1
 ###############################################
+
 resource "libvirt_domain" "master1" {
   name      = "okd-master1"
   vcpu      = var.master1.cpus
@@ -145,6 +150,7 @@ resource "libvirt_domain" "master1" {
 ###############################################
 # MASTER 2
 ###############################################
+
 resource "libvirt_domain" "master2" {
   name      = "okd-master2"
   vcpu      = var.master2.cpus
@@ -181,6 +187,7 @@ resource "libvirt_domain" "master2" {
 ###############################################
 # MASTER 3
 ###############################################
+
 resource "libvirt_domain" "master3" {
   name      = "okd-master3"
   vcpu      = var.master3.cpus
@@ -217,6 +224,7 @@ resource "libvirt_domain" "master3" {
 ###############################################
 # WORKER NODE
 ###############################################
+
 resource "libvirt_domain" "worker" {
   name      = "okd-worker"
   vcpu      = var.worker.cpus

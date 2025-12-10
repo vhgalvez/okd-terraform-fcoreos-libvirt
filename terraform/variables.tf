@@ -1,4 +1,7 @@
-# terraform/variables.tf
+
+# terraform\variables.tf
+# Variables para la configuración de la infraestructura OKD en libvirt
+
 #############################################
 # RED
 #############################################
@@ -42,25 +45,53 @@ variable "infra" {
 variable "bootstrap" {
   description = "Configuración del nodo bootstrap"
   type = object({
-    cpus   = number
-    memory = number
+    cpus     = number
+    memory   = number
     hostname = string
-    ip     = string
-    mac    = string
+    ip       = string
+    mac      = string
   })
 }
 
 #############################################
-# MASTER NODE (FCOS)
+# MASTER 1 (FCOS)
 #############################################
-variable "master" {
-  description = "Configuración del nodo master"
+variable "master1" {
+  description = "Configuración del nodo master 1"
   type = object({
-    cpus   = number
-    memory = number
-    ip     = string
+    cpus     = number
+    memory   = number
     hostname = string
-    mac    = string
+    ip       = string
+    mac      = string
+  })
+}
+
+#############################################
+# MASTER 2 (FCOS - nodo zombi)
+#############################################
+variable "master2" {
+  description = "Configuración del nodo master 2"
+  type = object({
+    cpus     = number
+    memory   = number
+    hostname = string
+    ip       = string
+    mac      = string
+  })
+}
+
+#############################################
+# MASTER 3 (FCOS - nodo zombi)
+#############################################
+variable "master3" {
+  description = "Configuración del nodo master 3"
+  type = object({
+    cpus     = number
+    memory   = number
+    hostname = string
+    ip       = string
+    mac      = string
   })
 }
 
@@ -70,11 +101,11 @@ variable "master" {
 variable "worker" {
   description = "Configuración del nodo worker"
   type = object({
-    cpus   = number
-    memory = number
-    ip     = string
+    cpus     = number
+    memory   = number
     hostname = string
-    mac    = string
+    ip       = string
+    mac      = string
   })
 }
 
@@ -123,9 +154,7 @@ variable "cluster_name" {
 }
 
 #############################################
-# IP del nodo infra (para forwarders)
-# (puede ser igual a var.infra.ip, lo dejamos separado
-#  porque tú lo estás usando así en network.tf)
+# IP del nodo infra
 #############################################
 variable "infra_ip" {
   description = "IP del servidor infra (DNS forwarder)"

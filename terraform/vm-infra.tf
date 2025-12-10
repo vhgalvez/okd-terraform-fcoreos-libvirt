@@ -18,14 +18,25 @@ data "template_file" "infra_cloud_init" {
   vars = {
     hostname       = var.infra.hostname
     short_hostname = split(".", var.infra.hostname)[0]
-    ip             = var.infra.ip
-    gateway        = var.gateway
-    dns1           = var.dns1
-    dns2           = var.dns2
+
+    ip      = var.infra.ip
+    gateway = var.gateway
+    dns1    = var.dns1
+    dns2    = var.dns2
+
     cluster_domain = var.cluster_domain
     cluster_name   = var.cluster_name
-    ssh_keys       = join("\n", var.ssh_keys)
     timezone       = var.timezone
+    ssh_keys       = join("\n", var.ssh_keys)
+
+    # ❗ Nuevos parámetros obligatorios para el template
+    bootstrap_ip = var.bootstrap.ip
+    master1_ip   = var.master1.ip
+    master2_ip   = var.master2.ip
+    master3_ip   = var.master3.ip
+    worker1_ip   = var.worker.ip
+
+    infra_ip = var.infra_ip
   }
 }
 
@@ -51,22 +62,17 @@ resource "libvirt_domain" "infra" {
   memory    = var.infra.memory
   autostart = true
 
-  cpu {
-    mode = "host-passthrough"
-  }
+  cpu { mode = "host-passthrough" }
 
   arch    = "x86_64"
   machine = "pc"
 
-  # Disco raíz AlmaLinux
   disk {
     volume_id = libvirt_volume.infra_disk.id
   }
 
-  # Cloud-init
   cloudinit = libvirt_cloudinit_disk.infra_init.id
 
-  # Interfaz de red
   network_interface {
     network_name   = libvirt_network.okd_net.name
     mac            = var.infra.mac
@@ -75,14 +81,12 @@ resource "libvirt_domain" "infra" {
     wait_for_lease = true
   }
 
-  # Consola serie
   console {
     type        = "pty"
     target_type = "serial"
     target_port = 0
   }
 
-  # VNC + VGA para ver arranque
   graphics {
     type           = "vnc"
     listen_type    = "address"
@@ -90,7 +94,5 @@ resource "libvirt_domain" "infra" {
     autoport       = true
   }
 
-  video {
-    type = "vga"
-  }
+  video { type = "vga" }
 }

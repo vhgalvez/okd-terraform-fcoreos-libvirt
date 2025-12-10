@@ -28,11 +28,14 @@ users:
       - ${ssh_keys}
 
 ###########################################################
-# WRITE_FILES
+# WRITE FILES
 ###########################################################
 
 write_files:
 
+  ###########################################################
+  # NetworkManager – IP fija + DNS OKD
+  ###########################################################
   - path: /etc/NetworkManager/system-connections/eth0.nmconnection
     permissions: "0600"
     content: |
@@ -52,6 +55,9 @@ write_files:
       [ipv6]
       method=ignore
 
+  ###########################################################
+  # /etc/hosts dinámico
+  ###########################################################
   - path: /usr/local/bin/set-hosts.sh
     permissions: "0755"
     content: |
@@ -62,6 +68,10 @@ write_files:
         echo "${ip} ${hostname} ${short_hostname}"
       } > /etc/hosts
 
+
+  ###########################################################
+  # sysctl
+  ###########################################################
   - path: /etc/sysctl.d/99-custom.conf
     permissions: "0644"
     content: |
@@ -69,12 +79,20 @@ write_files:
       net.ipv4.ip_nonlocal_bind = 1
       net.ipv4.conf.all.forwarding = 1
 
+
+  ###########################################################
+  # NetworkManager - desactivar systemd-resolved
+  ###########################################################
   - path: /etc/NetworkManager/conf.d/dns.conf
     permissions: "0644"
     content: |
       [main]
       dns=none
 
+
+  ###########################################################
+  # CoreDNS Corefile
+  ###########################################################
   - path: /etc/coredns/Corefile
     permissions: "0644"
     content: |
@@ -85,6 +103,10 @@ write_files:
         forward . 8.8.8.8 1.1.1.1
       }
 
+
+  ###########################################################
+  # Zona DNS completa del cluster OKD multinodo
+  ###########################################################
   - path: /etc/coredns/db.okd
     permissions: "0644"
     content: |
@@ -101,28 +123,18 @@ write_files:
       api         IN A ${ip}
       api-int     IN A ${ip}
 
-      bootstrap   IN A 10.56.0.11
-      master      IN A 10.56.0.12
-      worker      IN A 10.56.0.13
+      bootstrap   IN A ${bootstrap_ip}
+      master1     IN A ${master1_ip}
+      master2     IN A ${master2_ip}
+      master3     IN A ${master3_ip}
+      worker      IN A ${worker1_ip}
 
-      *.apps      IN A ${ip}
+      *.apps      IN A ${worker1_ip}
 
-  - path: /etc/systemd/system/coredns.service
-    permissions: "0644"
-    content: |
-      [Unit]
-      Description=CoreDNS
-      After=network-online.target
-      Wants=network-online.target
 
-      [Service]
-      ExecStart=/usr/local/bin/coredns -conf=/etc/coredns/Corefile
-      Restart=always
-      LimitNOFILE=1048576
-
-      [Install]
-      WantedBy=multi-user.target
-
+  ###########################################################
+  # HAProxy para API, MCS y Routers
+  ###########################################################
   - path: /etc/haproxy/haproxy.cfg
     permissions: "0644"
     content: |
@@ -143,8 +155,10 @@ write_files:
       backend api_nodes
         balance roundrobin
         option tcp-check
-        server bootstrap 10.56.0.11:6443 check fall 3 rise 2
-        server master    10.56.0.12:6443 check fall 3 rise 2
+        server bootstrap ${bootstrap_ip}:6443 check fall 3 rise 2
+        server master1   ${master1_ip}:6443 check fall 3 rise 2
+        server master2   ${master2_ip}:6443 check fall 3 rise 2
+        server master3   ${master3_ip}:6443 check fall 3 rise 2
 
       frontend mcs
         bind 0.0.0.0:22623
@@ -152,7 +166,7 @@ write_files:
 
       backend mcs_nodes
         balance roundrobin
-        server bootstrap 10.56.0.11:22623 check fall 3 rise 2
+        server bootstrap ${bootstrap_ip}:22623 check fall 3 rise 2
 
       frontend ingress80
         bind 0.0.0.0:80
@@ -164,13 +178,33 @@ write_files:
 
       backend worker_ingress
         balance roundrobin
-        server worker80  10.56.0.13:80 check
-        server worker443 10.56.0.13:443 check
+        server worker80  ${worker1_ip}:80 check
+        server worker443 ${worker1_ip}:443 check
+
+
+  ###########################################################
+  # CoreDNS Systemd Service
+  ###########################################################
+  - path: /etc/systemd/system/coredns.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=CoreDNS
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      ExecStart=/usr/local/bin/coredns -conf=/etc/coredns/Corefile
+      Restart=always
+      LimitNOFILE=1048576
+
+      [Install]
+      WantedBy=multi-user.target
+
 
 ###########################################################
 # RUNCMD
 ###########################################################
-
 runcmd:
   - fallocate -l 4G /swapfile
   - chmod 600 /swapfile
@@ -214,5 +248,4 @@ runcmd:
   - firewall-cmd --permanent --add-port=22623/tcp
   - firewall-cmd --permanent --add-port=80/tcp
   - firewall-cmd --permanent --add-port=443/tcp
-  - firewall-cmd --permanent --add-port=9000/tcp
   - firewall-cmd --reload
