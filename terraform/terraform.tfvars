@@ -16,57 +16,56 @@ almalinux_image = "/var/lib/libvirt/images/AlmaLinux-9-GenericCloud-9.5-20241120
 ssh_keys = [
   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCdfUJjRAJuFcdO0J8CIOkjaKpqP6h9TqDRhZOJTac0199gFUvAJF9R/MAqwDLi2QI6OtYjz1CiCSVLtVQ2fTTIdwVibr+ZKDcbx/E7ivKUUbcmAOU8NP1gv3e3anoUd5k/0h0krP88CXosr41eTih4EcKhBAKbeZ11M0i9GZOux+/WweLtSQ3NU07sUkf1jDIoBungg77unmadqP3m9PUdkFP7tZ2lufcs3iq+vq8JaUBs/hZKNmWOXpnAyNxD9RlBJmvW2QgHmX53y3WC9bWUEUrwfDMB2wAqWPEDfj+5jsXQZcVE4pqD6T1cPaITnr9KFGnCCG1VQg31t1Jttg8z vhgalvez@gmail.com"
 ]
-
 ###############################################
-# SERVIDOR INFRA (DNS + NTP + LB + COREDNS)
+# INFRA
 ###############################################
 infra = {
   cpus     = 2
-  memory   = 3072
+  memory   = 2048
   ip       = "10.56.0.10"
   hostname = "infra.okd.local"
   mac      = "52:54:00:00:00:10"
 }
 
 ###############################################
-# BOOTSTRAP (Temporal)
+# BOOTSTRAP
 ###############################################
 bootstrap = {
   cpus     = 4
-  memory   = 9216 # 9 GB
+  memory   = 6144
   hostname = "bootstrap.okd.local"
   ip       = "10.56.0.11"
   mac      = "52:54:00:00:00:11"
 }
 
 ###############################################
-# MASTER 1 (Principal)
+# MASTER 1
 ###############################################
 master1 = {
   cpus     = 4
-  memory   = 16384 # 16 GB
+  memory   = 8192
   hostname = "master1.okd.local"
   ip       = "10.56.0.12"
   mac      = "52:54:00:00:00:12"
 }
 
 ###############################################
-# MASTER 2 (zombi)
+# MASTER 2
 ###############################################
 master2 = {
   cpus     = 2
-  memory   = 4096 # 4 GB
+  memory   = 8192
   hostname = "master2.okd.local"
   ip       = "10.56.0.14"
   mac      = "52:54:00:00:00:14"
 }
 
 ###############################################
-# MASTER 3 (zombi)
+# MASTER 3
 ###############################################
 master3 = {
   cpus     = 2
-  memory   = 4096 # 4 GB
+  memory   = 8192
   hostname = "master3.okd.local"
   ip       = "10.56.0.15"
   mac      = "52:54:00:00:00:15"
@@ -77,7 +76,7 @@ master3 = {
 ###############################################
 worker = {
   cpus     = 4
-  memory   = 6144 # 6 GB
+  memory   = 3072
   hostname = "worker.okd.local"
   ip       = "10.56.0.13"
   mac      = "52:54:00:00:00:13"
