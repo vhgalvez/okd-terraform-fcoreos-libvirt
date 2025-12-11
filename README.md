@@ -353,7 +353,20 @@ sudo systemctl status nftables
 sudo nft list ruleset
 ```
 
----
+### Ver logs del bootstrap
+
+```bash
+sudo journalctl -u bootkube -b -f
+sudo journalctl -u bootkube.service -b -f
+```
+
+
+### Ver logs de HAProxy
+
+```bash
+sudo journalctl -u haproxy -b -f
+
+
 
 ## 14. Configura el `kubeconfig` para acceder al clúster OKD desde la máquina host
 
