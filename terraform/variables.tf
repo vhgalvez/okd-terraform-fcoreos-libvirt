@@ -36,6 +36,7 @@ variable "infra" {
     ip       = string
     hostname = string
     mac      = string
+    disk_size_gb  = number
   })
 }
 
@@ -50,6 +51,7 @@ variable "bootstrap" {
     hostname = string
     ip       = string
     mac      = string
+    disk_size_gb  = number
   })
 }
 
@@ -64,6 +66,7 @@ variable "master1" {
     hostname = string
     ip       = string
     mac      = string
+    disk_size_gb  = number
   })
 }
 
@@ -78,6 +81,7 @@ variable "master2" {
     hostname = string
     ip       = string
     mac      = string
+    disk_size_gb  = number
   })
 }
 
@@ -92,6 +96,7 @@ variable "master3" {
     hostname = string
     ip       = string
     mac      = string
+    disk_size_gb  = number
   })
 }
 
@@ -106,6 +111,7 @@ variable "worker" {
     hostname = string
     ip       = string
     mac      = string
+    disk_size_gb  = number
   })
 }
 
